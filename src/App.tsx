@@ -28,6 +28,18 @@ function reNumber(samples: Sample[]): Sample[] {
   return samples.map((sample, index) => ({ ...sample, number: index + 1 }));
 }
 
+function isBlankStarter(sample: Sample): boolean {
+  const hasSelections = Object.keys(sample.selections).length > 0;
+  const hasSectionNotes = Object.values(sample.sectionNotes ?? {}).some((value) => value.trim().length > 0);
+  const hasNotes = Boolean(sample.diagnosisNote.trim() || sample.microscopyNote.trim());
+  const defaultLocation = getTemplate(sample.mode).defaultLocation;
+
+  return !hasSelections
+    && !hasSectionNotes
+    && !hasNotes
+    && sample.location.trim() === defaultLocation;
+}
+
 function isSampleComplete(sample: Sample): boolean {
   const microscopySections = getTemplate(sample.mode).sections.filter((section) => (
     !section.exclusive && section.title.toLocaleLowerCase('tr-TR') !== 'hücre bloğu'
@@ -123,10 +135,15 @@ export default function App() {
 
   function addSample(mode: ReportMode) {
     setState((current) => {
+      if (current.samples.length === 1 && isBlankStarter(current.samples[0])) {
+        const firstSample = createSample(1, mode);
+        return { ...current, samples: [firstSample], activeSampleId: firstSample.id };
+      }
+
       const sample = createSample(current.samples.length + 1, mode);
       return { ...current, samples: [...current.samples, sample], activeSampleId: sample.id };
     });
-    notify(mode === 'tiiab' ? 'TİİAB alanı eklendi' : 'LAP alanı eklendi');
+    notify(mode === 'tiiab' ? 'TİİAB alanı hazır' : 'Diğer / LAP alanı hazır');
   }
 
   function deleteSample(id: string) {
