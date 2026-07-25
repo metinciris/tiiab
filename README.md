@@ -50,3 +50,13 @@ npm run preview
 ## Veri güvenliği
 
 Uygulama sunucuya hasta veya rapor verisi göndermez. Kayıtlar yalnızca kullanılan tarayıcının yerel depolamasında tutulur. Tarayıcı verileri silinirse kayıtlar da silinir; bu nedenle uzun süreli saklama için **Yedek indir** kullanılmalıdır.
+
+## Sayfa açılmıyorsa
+
+1. Depoda `Settings > Pages` bölümüne girin.
+2. `Build and deployment > Source` alanını `GitHub Actions` seçin.
+3. `Actions` sekmesinde `Deploy GitHub Pages` iş akışını açın ve `Run workflow` düğmesine basın.
+4. Yeşil tamamlandıktan sonra uygulamayı şu adresten açın:
+   `https://metinciris.github.io/tiiab/`
+
+Dosyaların depo kökünde bulunması gerekir. `package.json`, `src`, `.github` ve `vite.config.ts` başka bir üst klasörün içinde kalmamalıdır.
