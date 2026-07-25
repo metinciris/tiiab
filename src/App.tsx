@@ -4,6 +4,7 @@ import { ThyroidEditor } from './components/ThyroidEditor';
 import { getTemplate } from './data/reportTemplates';
 import { automaticStainCount, generateAllReports, generateSampleReportBody, generateStainText } from './lib/report';
 import { clearSavedState, createInitialState, createSample, loadState, saveState } from './lib/storage';
+import { getSampleWarnings } from './lib/warnings';
 import type { AppState, ReportMode, Sample, SelectionState } from './types';
 import './styles.css';
 
@@ -79,6 +80,7 @@ export default function App() {
 
   const activeSample = state.samples.find((sample) => sample.id === state.activeSampleId) ?? state.samples[0];
   const template = getTemplate(activeSample.mode);
+  const activeWarnings = getSampleWarnings(activeSample);
   const stainCount = state.stainCountOverride ?? automaticStainCount(state.samples.length);
   const stainText = useMemo(
     () => generateStainText(state.samples.length, state.stainCountOverride),
@@ -237,6 +239,14 @@ export default function App() {
               <button type="button" className="nds-button" onClick={applyNdsPreset}>NDS</button>
             </div>
           </div>
+          {activeWarnings.length > 0 && (
+            <aside className="suggestion-box" aria-label="Çelişkili seçim önerileri">
+              <strong>Öneri</strong>
+              <div>
+                {activeWarnings.map((warning) => <span key={warning}>{warning}</span>)}
+              </div>
+            </aside>
+          )}
           {activeSample.mode === 'tiiab'
             ? <ThyroidEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />
             : <OtherEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />}
