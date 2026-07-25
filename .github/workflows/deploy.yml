@@ -29,6 +29,9 @@ jobs:
       - name: Bagimliliklari kur
         run: npm install --no-audit --no-fund
 
+      - name: Rapor sozlesmesi testlerini calistir
+        run: npm test
+
       - name: Uygulamayi derle
         run: npm run build
 
