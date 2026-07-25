@@ -1,9 +1,52 @@
 import { DenseSection } from './DenseSection';
 import { EditorNotes } from './EditorNotes';
 import { OptionalMicroscopySection } from './OptionalMicroscopySection';
-import type { ReportTemplate, Sample } from '../types';
+import type { ReportSection, ReportTemplate, Sample } from '../types';
 
 const standardLocations = ['Lenf nodu', 'Tiroid loju', 'Paratiroid'];
+
+const diagnosisPriorityByLocation: Record<string, string[]> = {
+  'Lenf nodu': [
+    'LAP-2-LN-CONTENT',
+    'LAP-2-E2',
+    'LAP-2-I2',
+    'LAP-2-M2',
+    'LAP-2-Q2',
+    'LAP-2-S2',
+    'LAP-2-O2',
+  ],
+  'Tiroid loju': [
+    'LAP-2-I2',
+    'LAP-2-M2',
+    'LAP-2-Q2',
+    'LAP-2-S2',
+    'LAP-2-E2',
+    'LAP-2-O2',
+    'LAP-2-LN-CONTENT',
+  ],
+  Paratiroid: [
+    'LAP-2-I2',
+    'LAP-2-E2',
+    'LAP-2-M2',
+    'LAP-2-Q2',
+    'LAP-2-S2',
+    'LAP-2-O2',
+    'LAP-2-LN-CONTENT',
+  ],
+};
+
+function prioritizeDiagnosis(section: ReportSection, location: string): ReportSection {
+  const priority = diagnosisPriorityByLocation[location];
+  if (!priority) return section;
+
+  const rank = new Map(priority.map((id, index) => [id, index]));
+  return {
+    ...section,
+    options: [...section.options].sort((a, b) => (
+      (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+    )),
+  };
+}
 
 type Props = {
   sample: Sample;
@@ -14,6 +57,7 @@ type Props = {
 
 export function OtherEditor({ sample, template, onCycle, onChange }: Props) {
   const [diagnosis, ...allMicroscopy] = template.sections;
+  const prioritizedDiagnosis = prioritizeDiagnosis(diagnosis, sample.location);
   const extraSection = allMicroscopy.find((section) => section.id.endsWith('-extra'));
   const microscopy = allMicroscopy.filter((section) => !section.id.endsWith('-extra'));
   const isCustomLocation = !standardLocations.includes(sample.location);
@@ -52,7 +96,7 @@ export function OtherEditor({ sample, template, onCycle, onChange }: Props) {
         </label>
       </div>
 
-      <DenseSection section={diagnosis} sample={sample} tone="other" onCycle={onCycle} onNoteChange={onNoteChange} />
+      <DenseSection section={prioritizedDiagnosis} sample={sample} tone="other" onCycle={onCycle} onNoteChange={onNoteChange} />
 
       <div className="dense-form" aria-label="Diğer sitoloji mikroskopi seçenekleri">
         {microscopy.map((section) => (
