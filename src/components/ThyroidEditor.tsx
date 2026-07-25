@@ -12,6 +12,10 @@ type Props = {
 export function ThyroidEditor({ sample, template, onCycle, onChange }: Props) {
   const [diagnosis, ...microscopy] = template.sections;
   const isCustomLocation = sample.location !== 'Tiroid';
+  const onNoteChange = (sectionId: string, value: string) => onChange({
+    sectionNotes: { ...sample.sectionNotes, [sectionId]: value },
+    copiedAt: undefined,
+  });
 
   return (
     <div className="mode-editor thyroid-editor">
@@ -21,32 +25,24 @@ export function ThyroidEditor({ sample, template, onCycle, onChange }: Props) {
           <strong>Bethesda tanısı ve tiroid morfolojisi</strong>
         </div>
         <div className="specimen-buttons">
-          <button
-            type="button"
-            className={!isCustomLocation ? 'is-active' : ''}
-            onClick={() => onChange({ location: 'Tiroid', copiedAt: undefined })}
-          >
-            Tiroid
-          </button>
+          <button type="button" className={!isCustomLocation ? 'is-active' : ''} onClick={() => onChange({ location: 'Tiroid', copiedAt: undefined })}>Tiroid</button>
         </div>
         <label className={`custom-location ${isCustomLocation ? 'is-active' : ''}`}>
           <span>Diğer yer</span>
           <input
             value={isCustomLocation ? sample.location : ''}
             placeholder="Örn. sağ lob üst pol"
-            onFocus={() => {
-              if (!isCustomLocation) onChange({ location: '', copiedAt: undefined });
-            }}
+            onFocus={() => { if (!isCustomLocation) onChange({ location: '', copiedAt: undefined }); }}
             onChange={(event) => onChange({ location: event.target.value, copiedAt: undefined })}
           />
         </label>
       </div>
 
-      <DenseSection section={diagnosis} sample={sample} tone="thyroid" onCycle={onCycle} />
+      <DenseSection section={diagnosis} sample={sample} tone="thyroid" onCycle={onCycle} onNoteChange={onNoteChange} />
 
       <div className="dense-form" aria-label="Tiroid mikroskopi seçenekleri">
         {microscopy.map((section) => (
-          <DenseSection key={section.id} section={section} sample={sample} tone="thyroid" onCycle={onCycle} />
+          <DenseSection key={section.id} section={section} sample={sample} tone="thyroid" onCycle={onCycle} onNoteChange={onNoteChange} />
         ))}
       </div>
 

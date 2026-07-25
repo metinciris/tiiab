@@ -43,6 +43,7 @@ export type ReportTemplate = {
 };
 
 export type SelectionState = Record<string, number>;
+export type SectionNotes = Record<string, string>;
 
 export type Sample = {
   id: string;
@@ -50,6 +51,7 @@ export type Sample = {
   mode: ReportMode;
   location: string;
   selections: SelectionState;
+  sectionNotes: SectionNotes;
   diagnosisNote: string;
   microscopyNote: string;
   copiedAt?: string;
