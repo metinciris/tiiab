@@ -60,3 +60,4 @@ Uygulama sunucuya hasta veya rapor verisi göndermez. Kayıtlar yalnızca kullan
    `https://metinciris.github.io/tiiab/`
 
 Dosyaların depo kökünde bulunması gerekir. `package.json`, `src`, `.github` ve `vite.config.ts` başka bir üst klasörün içinde kalmamalıdır.
+Son güncelleme: 25 Temmuz 2026
