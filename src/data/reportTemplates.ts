@@ -116,6 +116,25 @@ tiiabDiagnosis.options = tiiabDiagnosis.options.map((option) => {
   return output ? { ...option, outputByVariant: { [option.variants[0]]: output } } : option;
 });
 
+const lapDiagnosis = lapSections[0];
+const retainedLapDiagnosisIds = new Set([
+  'LAP-2-E2',
+  'LAP-2-I2',
+  'LAP-2-M2',
+  'LAP-2-O2',
+  'LAP-2-Q2',
+  'LAP-2-S2',
+]);
+const retainedLapDiagnoses = lapDiagnosis.options.filter((option) => retainedLapDiagnosisIds.has(option.id));
+const benignDiagnosisIndex = retainedLapDiagnoses.findIndex((option) => option.id === 'LAP-2-I2');
+retainedLapDiagnoses.splice(benignDiagnosisIndex + 1, 0, {
+  id: 'LAP-2-LN-CONTENT',
+  label: 'Lenf nodu içeriği ile uyumlu',
+  variants: ['Lenf nodu içeriği ile uyumlu'],
+  tumorRelated: false,
+});
+lapDiagnosis.options = retainedLapDiagnoses;
+
 export const templates: Record<ReportMode, ReportTemplate> = {
   tiiab: {
     mode: 'tiiab',
