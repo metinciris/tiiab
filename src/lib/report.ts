@@ -43,14 +43,11 @@ export function generateSampleReportBody(sample: Sample): string {
     .map((option) => selectedOutput(sample, option))
     .filter((value): value is string => Boolean(value)) ?? [];
 
-  const lines: string[] = [];
-  lines.push(`${sample.number}- (Örnek NO:${sample.number}) ${template.specimenText(sample.location.trim() || template.defaultLocation)}`);
+  const diagnosisParts = diagnosis.map(sentence);
+  if (sample.diagnosisNote.trim()) diagnosisParts.push(sentence(sample.diagnosisNote));
 
-  if (diagnosis.length || sample.diagnosisNote.trim()) {
-    lines.push('', 'TANI');
-    diagnosis.forEach((value) => lines.push(sentence(value)));
-    if (sample.diagnosisNote.trim()) lines.push(sentence(sample.diagnosisNote));
-  }
+  const specimenLine = `${sample.number}- (Örnek NO:${sample.number}) ${template.specimenText(sample.location.trim() || template.defaultLocation)}`;
+  const lines: string[] = [diagnosisParts.length ? `${specimenLine}: ${diagnosisParts.join(' ')}` : specimenLine];
 
   const microscopyLines = microscopySections.flatMap((section) => {
     const values = section.options
