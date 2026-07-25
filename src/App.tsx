@@ -42,7 +42,9 @@ function isBlankStarter(sample: Sample): boolean {
 
 function isSampleComplete(sample: Sample): boolean {
   const microscopySections = getTemplate(sample.mode).sections.filter((section) => (
-    !section.exclusive && section.title.toLocaleLowerCase('tr-TR') !== 'hücre bloğu'
+    !section.exclusive
+    && section.title.toLocaleLowerCase('tr-TR') !== 'hücre bloğu'
+    && !section.id.endsWith('-extra')
   ));
   return microscopySections.length > 0 && microscopySections.every((section) => (
     section.options.some((option) => sample.selections[option.id] !== undefined)
