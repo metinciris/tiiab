@@ -2,12 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { OtherEditor } from './components/OtherEditor';
 import { ThyroidEditor } from './components/ThyroidEditor';
 import { getTemplate } from './data/reportTemplates';
-import {
-  automaticStainCount,
-  generateAllReports,
-  generateSampleReportBody,
-  generateStainText,
-} from './lib/report';
+import { automaticStainCount, generateAllReports, generateSampleReportBody, generateStainText } from './lib/report';
 import { createSample, loadState, saveState } from './lib/storage';
 import type { AppState, ReportMode, Sample, SelectionState } from './types';
 import './styles.css';
@@ -39,6 +34,7 @@ function isSampleComplete(sample: Sample): boolean {
   ));
   return microscopySections.length > 0 && microscopySections.every((section) => (
     section.options.some((option) => sample.selections[option.id] !== undefined)
+    || Boolean(sample.sectionNotes?.[section.id]?.trim())
   ));
 }
 
@@ -156,6 +152,7 @@ export default function App() {
     updateActive((sample) => ({
       ...sample,
       selections: sample.mode === 'tiiab' ? { ...TIIAB_NDS } : { ...OTHER_NDS },
+      sectionNotes: {},
       diagnosisNote: '',
       microscopyNote: '',
       copiedAt: undefined,
@@ -172,6 +169,8 @@ export default function App() {
     <div className="app-shell">
       <main className="workspace">
         <nav className="report-toolbar" aria-label="Rapor alanları">
+          <button type="button" className="reset-top-button" onClick={resetActiveSample}>Raporu sıfırla</button>
+
           <div className="add-mode-bar" aria-label="Yeni rapor ekle">
             <button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')}>＋ TİİAB</button>
             <button type="button" className="add-mode-bar__other" onClick={() => addSample('lap')}>＋ Diğer</button>
@@ -206,7 +205,6 @@ export default function App() {
           <div className="editor-head">
             <div><span>Rapor {activeSample.number}</span><h2>{activeSample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</h2></div>
             <div className="editor-head__actions">
-              <button type="button" onClick={resetActiveSample}>Sıfırla</button>
               <button type="button" className="nds-button" onClick={applyNdsPreset}>NDS</button>
             </div>
           </div>
