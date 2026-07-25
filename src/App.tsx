@@ -3,7 +3,7 @@ import { OtherEditor } from './components/OtherEditor';
 import { ThyroidEditor } from './components/ThyroidEditor';
 import { getTemplate } from './data/reportTemplates';
 import { automaticStainCount, generateAllReports, generateSampleReportBody, generateStainText } from './lib/report';
-import { createSample, loadState, saveState } from './lib/storage';
+import { clearSavedState, createInitialState, createSample, loadState, saveState } from './lib/storage';
 import type { AppState, ReportMode, Sample, SelectionState } from './types';
 import './styles.css';
 
@@ -131,7 +131,7 @@ export default function App() {
 
   function deleteSample(id: string) {
     if (state.samples.length === 1) {
-      resetActiveSample();
+      resetAllReports();
       return;
     }
     setState((current) => {
@@ -143,9 +143,13 @@ export default function App() {
     notify('Rapor silindi');
   }
 
-  function resetActiveSample() {
-    updateActive((sample) => ({ ...createSample(sample.number, sample.mode), id: sample.id, number: sample.number }));
-    notify('Rapor sıfırlandı');
+  function resetAllReports() {
+    const initial = createInitialState();
+    clearSavedState();
+    setState(initial);
+    previewScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    notify('Tüm raporlar sıfırlandı');
   }
 
   function applyNdsPreset() {
@@ -171,7 +175,7 @@ export default function App() {
         <nav className="report-toolbar" aria-label="Rapor alanları">
           <button
             type="button"
-            onClick={resetActiveSample}
+            onClick={resetAllReports}
             style={{ border: '1px solid #8f1724', background: '#b42333', color: '#fff', borderRadius: 8, padding: '10px 12px', fontWeight: 850, whiteSpace: 'nowrap' }}
           >
             Raporu sıfırla
