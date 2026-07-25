@@ -1,5 +1,5 @@
 import { getTemplate } from '../data/reportTemplates';
-import type { AppState, ReportOption, Sample } from '../types';
+import type { AppState, ReportOption, ReportSection, Sample } from '../types';
 
 export function normalizeText(value: string): string {
   return value
@@ -30,7 +30,11 @@ export function sampleHasContent(sample: Sample): boolean {
   return Object.keys(sample.selections).length > 0 || Boolean(sample.diagnosisNote.trim()) || Boolean(sample.microscopyNote.trim());
 }
 
-export function generateSampleReport(sample: Sample): string {
+function isCellBlockSection(section: ReportSection): boolean {
+  return section.title.toLocaleLowerCase('tr-TR') === 'hücre bloğu';
+}
+
+function generateSampleReportBody(sample: Sample): string {
   const template = getTemplate(sample.mode);
   const diagnosisSection = template.sections.find((section) => section.exclusive);
   const microscopySections = template.sections.filter((section) => !section.exclusive);
@@ -53,6 +57,13 @@ export function generateSampleReport(sample: Sample): string {
       .map((option) => selectedOutput(sample, option))
       .filter((value): value is string => Boolean(value));
     if (!values.length) return [];
+
+    // Hücre bloğu bağımsız bir rapor bölümü değildir; yalnızca mikroskopi
+    // içerisinde tek satır olarak yer alır.
+    if (isCellBlockSection(section)) {
+      return [`- Hücre bloğu: ${values.map(sentence).join(' ')}`];
+    }
+
     return [`- ${section.title}: ${values.map(sentence).join(' ')}`];
   });
 
@@ -78,8 +89,20 @@ export function generateStainText(sampleCount: number, override: number | null):
   return `Ayırıcı tanı amacıyla ${count} adet histokimyasal boya: Papanicolaou, Giemsa, ayrıca Hematoksilen Eozin çalışılmıştır. Örnekler, direkt yayma ve SurePath sıvı bazlı yöntemle değerlendirilmiştir.`;
 }
 
+function appendStains(reportBody: string, sampleCount: number, override: number | null): string {
+  const stainText = generateStainText(sampleCount, override);
+  // Rapor ile ek boya alanı arasında iki boş satır bırakılır.
+  return `${reportBody}\n\n\nEK BOYALAR\n${stainText}`;
+}
+
+export function generateSampleReport(sample: Sample, sampleCount = 1, override: number | null = null): string {
+  return appendStains(generateSampleReportBody(sample), sampleCount, override);
+}
+
 export function generateAllReports(state: AppState): string {
-  const reports = state.samples.filter(sampleHasContent).map(generateSampleReport);
-  const stainText = generateStainText(state.samples.length, state.stainCountOverride);
-  return [...reports, reports.length ? `EK BOYALAR\n${stainText}` : stainText].join('\n\n------------------------------\n\n');
+  const reports = state.samples.filter(sampleHasContent).map(generateSampleReportBody);
+  const reportBody = reports.length
+    ? reports.join('\n\n------------------------------\n\n')
+    : generateSampleReportBody(state.samples[0]);
+  return appendStains(reportBody, state.samples.length, state.stainCountOverride);
 }

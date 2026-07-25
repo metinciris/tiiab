@@ -1,4 +1,4 @@
-export type ReportMode = 'tiiab' | 'lap' | 'paratiroid';
+export type ReportMode = 'tiiab' | 'lap';
 
 export type SourceOption = {
   cell: string;
@@ -32,9 +32,12 @@ export type ReportSection = {
 
 export type ReportTemplate = {
   mode: ReportMode;
+  pageNumber: 1 | 2;
+  pageLabel: string;
   title: string;
   shortTitle: string;
   defaultLocation: string;
+  locationSuggestions: string[];
   specimenText: (location: string) => string;
   sections: ReportSection[];
 };

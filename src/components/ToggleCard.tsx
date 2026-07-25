@@ -19,10 +19,10 @@ export function ToggleCard({ option, activeIndex, onCycle }: Props) {
       title={hasVariants ? 'Tekrar tıklayınca sonraki seçenek açılır; son seçenekten sonra pasif olur.' : undefined}
       aria-pressed={active}
     >
-      <span>{text}</span>
-      <span className="toggle-card__meta">
-        {active ? 'Seçili' : 'Seç'}
-        {hasVariants ? ` · ${active ? activeIndex + 1 : 0}/${option.variants.length}` : ''}
+      <span className="toggle-card__text">{text}</span>
+      <span className="toggle-card__meta" aria-hidden="true">
+        {active && <span className="selected-mark">✓</span>}
+        {hasVariants ? `${active ? activeIndex + 1 : 0}/${option.variants.length}` : (active ? 'Seçili' : '')}
       </span>
     </button>
   );

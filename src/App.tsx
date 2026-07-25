@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ToggleCard } from './components/ToggleCard';
 import { getTemplate, templates } from './data/reportTemplates';
-import { automaticStainCount, generateAllReports, generateSampleReport, generateStainText, sampleHasContent } from './lib/report';
+import { automaticStainCount, generateAllReports, generateSampleReport, sampleHasContent } from './lib/report';
 import { clearSavedState, createId, createInitialState, createSample, loadState, saveState } from './lib/storage';
 import type { AppState, ReportMode, Sample } from './types';
 import './styles.css';
 
 type Toast = { id: number; text: string } | null;
+
+const pageModes: ReportMode[] = ['tiiab', 'lap'];
 
 function downloadText(filename: string, content: string, type: string) {
   const blob = new Blob([content], { type });
@@ -47,9 +49,12 @@ export default function App() {
   const activeSample = state.samples.find((sample) => sample.id === state.activeSampleId) ?? state.samples[0];
   const template = getTemplate(activeSample.mode);
   const activeIndex = state.samples.findIndex((sample) => sample.id === activeSample.id);
+  const stainCount = state.stainCountOverride ?? automaticStainCount(state.samples.length);
 
   const preview = useMemo(
-    () => showAllPreview ? generateAllReports(state) : generateSampleReport(activeSample),
+    () => showAllPreview
+      ? generateAllReports(state)
+      : generateSampleReport(activeSample, state.samples.length, state.stainCountOverride),
     [activeSample, showAllPreview, state],
   );
 
@@ -61,7 +66,7 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const timeout = window.setTimeout(() => setToast(null), 1900);
+    const timeout = window.setTimeout(() => setToast(null), 1700);
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
@@ -77,10 +82,11 @@ export default function App() {
   }
 
   function changeMode(mode: ReportMode) {
+    if (mode === activeSample.mode) return;
     updateActive((sample) => ({
       ...sample,
       mode,
-      location: sampleHasContent(sample) ? sample.location : getTemplate(mode).defaultLocation,
+      location: getTemplate(mode).defaultLocation,
       selections: {},
       diagnosisNote: '',
       microscopyNote: '',
@@ -122,7 +128,7 @@ export default function App() {
       copiedAt: undefined,
     };
     setState((current) => ({ ...current, samples: [...current.samples, duplicated], activeSampleId: duplicated.id }));
-    notify('Alan kopyalandı');
+    notify('Alan çoğaltıldı');
   }
 
   function deleteSample(id: string) {
@@ -156,7 +162,7 @@ export default function App() {
   }
 
   async function copyActive(moveNext = false) {
-    await copyText(generateSampleReport(activeSample));
+    await copyText(generateSampleReport(activeSample, state.samples.length, state.stainCountOverride));
     const copiedAt = new Date().toISOString();
     setState((current) => {
       const samples = current.samples.map((sample) => sample.id === activeSample.id ? { ...sample, copiedAt } : sample);
@@ -168,12 +174,7 @@ export default function App() {
 
   async function copyAll() {
     await copyText(generateAllReports(state));
-    notify('Tüm raporlar panoya kopyalandı');
-  }
-
-  async function copyStains() {
-    await copyText(generateStainText(state.samples.length, state.stainCountOverride));
-    notify('Ek boya metni kopyalandı');
+    notify('Tüm rapor panoya kopyalandı');
   }
 
   function exportBackup() {
@@ -192,18 +193,16 @@ export default function App() {
     }
   }
 
-  const stainCount = state.stainCountOverride ?? automaticStainCount(state.samples.length);
-
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div>
+        <div className="brand-block">
           <p className="eyebrow">Yerel kayıtlı · düz yazı çıktı</p>
-          <h1>TİİAB / LAP Raporlama</h1>
+          <h1>Sitoloji Raporlama</h1>
         </div>
         <div className="storage-status" title="Her tıklamada tarayıcıya otomatik kaydedilir.">
           <span className="storage-dot" />
-          Tarayıcıya kaydedildi · {Number.isNaN(lastSavedAt.getTime()) ? 'şimdi' : lastSavedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+          Kaydedildi · {Number.isNaN(lastSavedAt.getTime()) ? 'şimdi' : lastSavedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </header>
 
@@ -211,44 +210,47 @@ export default function App() {
         <aside className="sidebar">
           <div className="sidebar__head">
             <div>
-              <span className="sidebar__label">İİAB alanları</span>
+              <span className="sidebar__label">Rapor alanları</span>
               <strong>{state.samples.length} alan</strong>
             </div>
             <button className="icon-button" type="button" onClick={() => addSample()} aria-label="Yeni alan ekle">＋</button>
           </div>
 
           <div className="sample-list">
-            {state.samples.map((sample) => (
-              <button
-                type="button"
-                key={sample.id}
-                className={`sample-item ${sample.id === activeSample.id ? 'is-active' : ''}`}
-                onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
-              >
-                <span className="sample-number">{sample.number}</span>
-                <span className="sample-text">
-                  <strong>{getTemplate(sample.mode).shortTitle}</strong>
-                  <small>{sample.location || getTemplate(sample.mode).defaultLocation}</small>
-                </span>
-                <span className={`sample-state ${sample.copiedAt ? 'is-done' : ''}`}>{sample.copiedAt ? '✓' : '•'}</span>
-              </button>
-            ))}
+            {state.samples.map((sample) => {
+              const sampleTemplate = getTemplate(sample.mode);
+              return (
+                <button
+                  type="button"
+                  key={sample.id}
+                  className={`sample-item ${sample.id === activeSample.id ? 'is-active' : ''}`}
+                  onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
+                >
+                  <span className="sample-number">{sample.number}</span>
+                  <span className="sample-text">
+                    <strong>{sampleTemplate.shortTitle}</strong>
+                    <small>{sample.location || sampleTemplate.defaultLocation}</small>
+                  </span>
+                  <span className={`sample-state ${sample.copiedAt ? 'is-done' : ''}`}>{sample.copiedAt ? '✓' : '•'}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <button className="secondary full" type="button" onClick={() => addSample()}>Yeni alan ekle</button>
+          <button className="secondary full compact-button" type="button" onClick={() => addSample()}>Yeni alan</button>
           <div className="sidebar-actions">
-            <button className="ghost" type="button" onClick={duplicateSample}>Alanı çoğalt</button>
-            <button className="ghost danger-text" type="button" onClick={() => deleteSample(activeSample.id)}>Alanı sil</button>
+            <button className="ghost" type="button" onClick={duplicateSample}>Çoğalt</button>
+            <button className="ghost danger-text" type="button" onClick={() => deleteSample(activeSample.id)}>Sil</button>
           </div>
 
           <div className="stain-card">
             <div className="stain-card__head">
-              <span>Ek boya toplamı</span>
+              <span>Ek boya</span>
               <strong>{stainCount}</strong>
             </div>
-            <p>1 alan: 3 · 2 alan: 6 · 3 alan: 9 · 4 ve üzeri: 10</p>
+            <small>Rapora otomatik eklenir</small>
             <label>
-              Manuel sayı
+              Manuel
               <input
                 type="number"
                 min="0"
@@ -260,7 +262,6 @@ export default function App() {
                 }))}
               />
             </label>
-            <button className="secondary full" type="button" onClick={copyStains}>Ek boya metnini kopyala</button>
           </div>
 
           <div className="backup-actions">
@@ -292,67 +293,87 @@ export default function App() {
             </div>
           </div>
 
-          <div className="mode-tabs" role="tablist" aria-label="Rapor türü">
-            {(Object.keys(templates) as ReportMode[]).map((mode) => (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeSample.mode === mode}
-                className={activeSample.mode === mode ? 'is-active' : ''}
-                key={mode}
-                onClick={() => changeMode(mode)}
-              >
-                {templates[mode].shortTitle}
-              </button>
+          <div className="page-tabs" role="tablist" aria-label="Excel sayfası">
+            {pageModes.map((mode) => {
+              const page = templates[mode];
+              return (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeSample.mode === mode}
+                  className={activeSample.mode === mode ? 'is-active' : ''}
+                  key={mode}
+                  onClick={() => changeMode(mode)}
+                >
+                  <span>{page.pageNumber}. sayfa</span>
+                  <strong>{page.pageLabel}</strong>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="location-row">
+            <label className="location-field">
+              <span>Örnek yeri / başlık</span>
+              <input
+                value={activeSample.location}
+                onChange={(event) => updateActive((sample) => ({ ...sample, location: event.target.value, copiedAt: undefined }))}
+                placeholder={template.defaultLocation}
+              />
+            </label>
+            <div className="location-suggestions" aria-label="Hızlı örnek yeri">
+              {template.locationSuggestions.map((location) => (
+                <button
+                  type="button"
+                  key={location}
+                  className={activeSample.location === location ? 'is-active' : ''}
+                  onClick={() => updateActive((sample) => ({ ...sample, location, copiedAt: undefined }))}
+                >
+                  {location}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="compact-hint">
+            Tıklama: seç · tekrar tıklama: sonraki seçenek · son seçenekten sonra kapat. Kırmızı çerçeve tümör ilişkili bulguyu gösterir.
+          </div>
+
+          <div className="section-board">
+            {template.sections.map((section) => (
+              <section className={`option-section ${section.exclusive ? 'is-diagnosis' : ''}`} key={section.id}>
+                <div className="option-section__title">
+                  <h3>{section.title}</h3>
+                  <span>{section.exclusive ? 'Tek' : 'Çoklu'}</span>
+                </div>
+                <div className="option-grid">
+                  {section.options.map((option) => (
+                    <ToggleCard
+                      key={option.id}
+                      option={option}
+                      activeIndex={activeSample.selections[option.id]}
+                      onCycle={() => cycleOption(section.id, option.id, option.variants.length, Boolean(section.exclusive))}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
 
-          <label className="location-field">
-            <span>Örnek yeri / başlık</span>
-            <input
-              value={activeSample.location}
-              onChange={(event) => updateActive((sample) => ({ ...sample, location: event.target.value, copiedAt: undefined }))}
-              placeholder={template.defaultLocation}
-            />
-          </label>
-
-          <div className="hint-box">
-            Kutuyu tıklayınca seçilir. Çok seçenekli kutularda her tıklama bir sonraki metne geçer; son metinden sonra kutu kapanır. Kırmızı tonlu kutular tümör ilişkili bulgulardır.
-          </div>
-
-          {template.sections.map((section) => (
-            <section className="option-section" key={section.id}>
-              <div className="option-section__title">
-                <h3>{section.title}</h3>
-                <span>{section.exclusive ? 'Tek seçim' : 'Çoklu seçim'}</span>
-              </div>
-              <div className="option-grid">
-                {section.options.map((option) => (
-                  <ToggleCard
-                    key={option.id}
-                    option={option}
-                    activeIndex={activeSample.selections[option.id]}
-                    onCycle={() => cycleOption(section.id, option.id, option.variants.length, Boolean(section.exclusive))}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-
           <div className="notes-grid">
             <label>
-              <span>Tanıya eklenecek serbest metin</span>
+              <span>Tanı serbest metni</span>
               <textarea
-                rows={3}
+                rows={2}
                 value={activeSample.diagnosisNote}
                 onChange={(event) => updateActive((sample) => ({ ...sample, diagnosisNote: event.target.value, copiedAt: undefined }))}
                 placeholder="Gerekirse ek tanı veya yorum..."
               />
             </label>
             <label>
-              <span>Mikroskopiye eklenecek serbest metin</span>
+              <span>Mikroskopi serbest metni</span>
               <textarea
-                rows={3}
+                rows={2}
                 value={activeSample.microscopyNote}
                 onChange={(event) => updateActive((sample) => ({ ...sample, microscopyNote: event.target.value, copiedAt: undefined }))}
                 placeholder="Gerekirse ek mikroskopi notu..."
@@ -373,7 +394,7 @@ export default function App() {
             </div>
           </div>
 
-          <pre className="report-output">{preview || 'Seçimler yapıldıkça rapor burada oluşur.'}</pre>
+          <pre className="report-output">{preview}</pre>
 
           <div className="copy-stack">
             <button className="primary" type="button" onClick={() => void copyActive(false)}>Bu alanı kopyala</button>
