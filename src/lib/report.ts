@@ -34,6 +34,26 @@ function isCellBlockSection(section: ReportSection): boolean {
   return section.title.toLocaleLowerCase('tr-TR') === 'hücre bloğu';
 }
 
+function isCustomLocation(sample: Sample, location: string): boolean {
+  const standardLocations = sample.mode === 'tiiab'
+    ? ['Tiroid']
+    : ['Lenf nodu', 'Tiroid loju', 'Paratiroid'];
+  return Boolean(location) && !standardLocations.includes(location);
+}
+
+function specimenLine(sample: Sample, location: string): string {
+  const template = getTemplate(sample.mode);
+  if (!isCustomLocation(sample, location)) {
+    return `${sample.number}- (Örnek NO:${sample.number}) ${template.specimenText(location || template.defaultLocation)}`;
+  }
+
+  const quotedLocation = location.replace(/"/g, '\\"');
+  if (sample.mode === 'tiiab') {
+    return `${sample.number}- (Örnek NO:${sample.number}, "${quotedLocation}") Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji`;
+  }
+  return `${sample.number}- (Örnek NO:${sample.number}, "${quotedLocation}") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma`;
+}
+
 export function generateSampleReportBody(sample: Sample): string {
   const template = getTemplate(sample.mode);
   const diagnosisSection = template.sections.find((section) => section.exclusive);
@@ -42,12 +62,14 @@ export function generateSampleReportBody(sample: Sample): string {
   const diagnosis = diagnosisSection?.options
     .map((option) => selectedOutput(sample, option))
     .filter((value): value is string => Boolean(value)) ?? [];
+  const diagnosisText = [...diagnosis, sample.diagnosisNote.trim()]
+    .filter(Boolean)
+    .map(sentence)
+    .join(' ');
 
-  const diagnosisParts = diagnosis.map(sentence);
-  if (sample.diagnosisNote.trim()) diagnosisParts.push(sentence(sample.diagnosisNote));
-
-  const specimenLine = `${sample.number}- (Örnek NO:${sample.number}) ${template.specimenText(sample.location.trim() || template.defaultLocation)}`;
-  const lines: string[] = [diagnosisParts.length ? `${specimenLine}: ${diagnosisParts.join(' ')}` : specimenLine];
+  const location = sample.location.trim() || template.defaultLocation;
+  const firstLine = specimenLine(sample, location);
+  const lines: string[] = [diagnosisText ? `${firstLine}: ${diagnosisText}` : firstLine];
 
   const microscopyLines = microscopySections.flatMap((section) => {
     const values = section.options
@@ -55,8 +77,6 @@ export function generateSampleReportBody(sample: Sample): string {
       .filter((value): value is string => Boolean(value));
     if (!values.length) return [];
 
-    // Hücre bloğu bağımsız bir rapor bölümü değildir; yalnızca mikroskopi
-    // içerisinde tek satır olarak yer alır.
     if (isCellBlockSection(section)) {
       return [`- Hücre bloğu: ${values.map(sentence).join(' ')}`];
     }
@@ -88,7 +108,6 @@ export function generateStainText(sampleCount: number, override: number | null):
 
 function appendStains(reportBody: string, sampleCount: number, override: number | null): string {
   const stainText = generateStainText(sampleCount, override);
-  // Rapor ile ek boya alanı arasında iki boş satır bırakılır.
   return `${reportBody}\n\n\nEK BOYALAR\n${stainText}`;
 }
 

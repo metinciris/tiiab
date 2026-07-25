@@ -78,8 +78,6 @@ function dedupeOptions(options: ReportOption[]): ReportOption[] {
 function sourceSections(sheet: 'tiiab' | 'LAP'): ReportSection[] {
   return source[sheet].map((row) => ({
     id: `${sheet}-${row.row}`,
-    // Excel'in 2. satırı tanıdır. TİİAB sayfasındaki birleşik hücre etiketi
-    // yanlışlıkla "Hücre bloğu" olarak okunabildiği için burada açıkça düzeltilir.
     title: row.row === 2 ? 'Tanı' : (row.label?.trim() || `Bölüm ${row.row}`),
     exclusive: row.row === 2,
     options: row.row === 2
@@ -136,8 +134,8 @@ export const templates: Record<ReportMode, ReportTemplate> = {
     pageLabel: 'Tiroid loju / Paratiroid / LAP',
     title: 'Tiroid loju, Paratiroid ve LAP Sitolojisi',
     shortTitle: '2. sayfa',
-    defaultLocation: 'Tiroid loju',
-    locationSuggestions: ['Tiroid loju', 'Paratiroid', 'Lenf nodu'],
+    defaultLocation: 'Lenf nodu',
+    locationSuggestions: ['Lenf nodu', 'Tiroid loju', 'Paratiroid'],
     specimenText: (location) => `${location}: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma`,
     sections: lapSections,
   },

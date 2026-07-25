@@ -11,6 +11,7 @@ type Props = {
 
 export function ThyroidEditor({ sample, template, onCycle, onChange }: Props) {
   const [diagnosis, ...microscopy] = template.sections;
+  const isCustomLocation = sample.location !== 'Tiroid';
 
   return (
     <div className="mode-editor thyroid-editor">
@@ -19,7 +20,26 @@ export function ThyroidEditor({ sample, template, onCycle, onChange }: Props) {
           <span>TİİAB</span>
           <strong>Bethesda tanısı ve tiroid morfolojisi</strong>
         </div>
-        <div className="fixed-location">Örnek yeri: <b>Tiroid</b></div>
+        <div className="specimen-buttons">
+          <button
+            type="button"
+            className={!isCustomLocation ? 'is-active' : ''}
+            onClick={() => onChange({ location: 'Tiroid', copiedAt: undefined })}
+          >
+            Tiroid
+          </button>
+        </div>
+        <label className={`custom-location ${isCustomLocation ? 'is-active' : ''}`}>
+          <span>Diğer yer</span>
+          <input
+            value={isCustomLocation ? sample.location : ''}
+            placeholder="Örn. sağ lob üst pol"
+            onFocus={() => {
+              if (!isCustomLocation) onChange({ location: '', copiedAt: undefined });
+            }}
+            onChange={(event) => onChange({ location: event.target.value, copiedAt: undefined })}
+          />
+        </label>
       </div>
 
       <DenseSection section={diagnosis} sample={sample} tone="thyroid" onCycle={onCycle} />
