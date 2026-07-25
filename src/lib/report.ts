@@ -2,10 +2,7 @@ import { getTemplate } from '../data/reportTemplates';
 import type { AppState, ReportOption, ReportSection, Sample } from '../types';
 
 export function normalizeText(value: string): string {
-  return value
-    .replace(/\s+/g, ' ')
-    .replace(/\s+([.,;:])/g, '$1')
-    .trim();
+  return value.replace(/\s+/g, ' ').replace(/\s+([.,;:])/g, '$1').trim();
 }
 
 export function sentence(value: string): string {
@@ -27,7 +24,10 @@ export function selectedOutput(sample: Sample, option: ReportOption): string | n
 }
 
 export function sampleHasContent(sample: Sample): boolean {
-  return Object.keys(sample.selections).length > 0 || Boolean(sample.diagnosisNote.trim()) || Boolean(sample.microscopyNote.trim());
+  return Object.keys(sample.selections).length > 0
+    || Object.values(sample.sectionNotes ?? {}).some((value) => Boolean(value.trim()))
+    || Boolean(sample.diagnosisNote.trim())
+    || Boolean(sample.microscopyNote.trim());
 }
 
 function isCellBlockSection(section: ReportSection): boolean {
@@ -35,9 +35,7 @@ function isCellBlockSection(section: ReportSection): boolean {
 }
 
 function isCustomLocation(sample: Sample, location: string): boolean {
-  const standardLocations = sample.mode === 'tiiab'
-    ? ['Tiroid']
-    : ['Lenf nodu', 'Tiroid loju', 'Paratiroid'];
+  const standardLocations = sample.mode === 'tiiab' ? ['Tiroid'] : ['Lenf nodu', 'Tiroid loju', 'Paratiroid'];
   return Boolean(location) && !standardLocations.includes(location);
 }
 
@@ -46,7 +44,6 @@ function specimenLine(sample: Sample, location: string): string {
   if (!isCustomLocation(sample, location)) {
     return `${sample.number}- (Örnek NO:${sample.number}) ${template.specimenText(location || template.defaultLocation)}`;
   }
-
   const quotedLocation = location.replace(/"/g, '\\"');
   if (sample.mode === 'tiiab') {
     return `${sample.number}- (Örnek NO:${sample.number}, "${quotedLocation}") Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji`;
@@ -62,7 +59,8 @@ export function generateSampleReportBody(sample: Sample): string {
   const diagnosis = diagnosisSection?.options
     .map((option) => selectedOutput(sample, option))
     .filter((value): value is string => Boolean(value)) ?? [];
-  const diagnosisText = [...diagnosis, sample.diagnosisNote.trim()]
+  const diagnosisSectionNote = diagnosisSection ? sample.sectionNotes?.[diagnosisSection.id]?.trim() : '';
+  const diagnosisText = [...diagnosis, diagnosisSectionNote, sample.diagnosisNote.trim()]
     .filter(Boolean)
     .map(sentence)
     .join(' ');
@@ -75,13 +73,12 @@ export function generateSampleReportBody(sample: Sample): string {
     const values = section.options
       .map((option) => selectedOutput(sample, option))
       .filter((value): value is string => Boolean(value));
-    if (!values.length) return [];
+    const sectionNote = sample.sectionNotes?.[section.id]?.trim();
+    const combined = [...values, sectionNote].filter(Boolean).map(sentence);
+    if (!combined.length) return [];
 
-    if (isCellBlockSection(section)) {
-      return [`- Hücre bloğu: ${values.map(sentence).join(' ')}`];
-    }
-
-    return [`- ${section.title}: ${values.map(sentence).join(' ')}`];
+    if (isCellBlockSection(section)) return [`- Hücre bloğu: ${combined.join(' ')}`];
+    return [`- ${section.title}: ${combined.join(' ')}`];
   });
 
   if (microscopyLines.length || sample.microscopyNote.trim()) {
@@ -107,8 +104,7 @@ export function generateStainText(sampleCount: number, override: number | null):
 }
 
 function appendStains(reportBody: string, sampleCount: number, override: number | null): string {
-  const stainText = generateStainText(sampleCount, override);
-  return `${reportBody}\n\n\nEK BOYALAR\n${stainText}`;
+  return `${reportBody}\n\n\nEK BOYALAR\n${generateStainText(sampleCount, override)}`;
 }
 
 export function generateSampleReport(sample: Sample, sampleCount = 1, override: number | null = null): string {
@@ -117,8 +113,6 @@ export function generateSampleReport(sample: Sample, sampleCount = 1, override: 
 
 export function generateAllReports(state: AppState): string {
   const reports = state.samples.filter(sampleHasContent).map(generateSampleReportBody);
-  const reportBody = reports.length
-    ? reports.join('\n\n')
-    : generateSampleReportBody(state.samples[0]);
+  const reportBody = reports.length ? reports.join('\n\n') : generateSampleReportBody(state.samples[0]);
   return appendStains(reportBody, state.samples.length, state.stainCountOverride);
 }
