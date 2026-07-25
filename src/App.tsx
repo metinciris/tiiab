@@ -29,6 +29,23 @@ function reNumber(samples: Sample[]): Sample[] {
   return samples.map((sample, index) => ({ ...sample, number: index + 1 }));
 }
 
+function requiredMicroscopySections(sample: Sample) {
+  return getTemplate(sample.mode).sections.filter((section) => (
+    !section.exclusive
+    && section.title.toLocaleLowerCase('tr-TR') !== 'hücre bloğu'
+    && !section.id.endsWith('-extra')
+  ));
+}
+
+function getMissingSections(sample: Sample): string[] {
+  return requiredMicroscopySections(sample)
+    .filter((section) => (
+      !section.options.some((option) => sample.selections[option.id] !== undefined)
+      && !sample.sectionNotes?.[section.id]?.trim()
+    ))
+    .map((section) => section.title);
+}
+
 function isBlankStarter(sample: Sample): boolean {
   const hasSelections = Object.keys(sample.selections).length > 0;
   const hasSectionNotes = Object.values(sample.sectionNotes ?? {}).some((value) => value.trim().length > 0);
@@ -42,15 +59,16 @@ function isBlankStarter(sample: Sample): boolean {
 }
 
 function isSampleComplete(sample: Sample): boolean {
-  const microscopySections = getTemplate(sample.mode).sections.filter((section) => (
-    !section.exclusive
-    && section.title.toLocaleLowerCase('tr-TR') !== 'hücre bloğu'
-    && !section.id.endsWith('-extra')
-  ));
+  const microscopySections = requiredMicroscopySections(sample);
   return microscopySections.length > 0 && microscopySections.every((section) => (
     section.options.some((option) => sample.selections[option.id] !== undefined)
     || Boolean(sample.sectionNotes?.[section.id]?.trim())
   ));
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
 const TIIAB_NDS: SelectionState = {
@@ -106,6 +124,30 @@ export default function App() {
     const targetTop = container.scrollTop + (itemRect.top - containerRect.top) - 24;
     container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   }, [activeSample.id, state.samples.length]);
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if (isTypingTarget(event.target)) return;
+      const key = event.key.toLocaleLowerCase('tr-TR');
+
+      if (event.altKey && !event.ctrlKey && !event.metaKey && key === 't') {
+        event.preventDefault();
+        addSample('tiiab');
+      } else if (event.altKey && !event.ctrlKey && !event.metaKey && key === 'd') {
+        event.preventDefault();
+        addSample('lap');
+      } else if (event.altKey && !event.ctrlKey && !event.metaKey && key === 'n') {
+        event.preventDefault();
+        applyNdsPreset();
+      } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && key === 'c') {
+        event.preventDefault();
+        void copyAll();
+      }
+    }
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [state, activeSample]);
 
   function notify(text: string) {
     setToast({ id: Date.now(), text });
@@ -203,23 +245,31 @@ export default function App() {
           </button>
 
           <div className="add-mode-bar" aria-label="Yeni rapor ekle">
-            <button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')}>＋ TİİAB</button>
-            <button type="button" className="add-mode-bar__other" onClick={() => addSample('lap')}>＋ Diğer</button>
+            <button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')} title="Kısayol: Alt+T">＋ TİİAB</button>
+            <button type="button" className="add-mode-bar__other" onClick={() => addSample('lap')} title="Kısayol: Alt+D">＋ Diğer</button>
           </div>
 
           <div className="sample-list">
             {state.samples.map((sample) => {
               const complete = isSampleComplete(sample);
+              const missingSections = getMissingSections(sample);
+              const warnings = getSampleWarnings(sample);
+              const titleParts = [
+                missingSections.length ? `Eksik: ${missingSections.join(', ')}` : 'Mikroskopi satırları tamamlandı',
+                warnings.length ? `Öneri: ${warnings.join(' ')}` : '',
+              ].filter(Boolean);
+
               return (
                 <button
                   type="button"
                   key={sample.id}
                   className={`sample-item sample-item--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`}
                   onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
-                  title={complete ? 'Mikroskopi satırları tamamlandı' : 'Mikroskopi satırlarında eksik seçim var'}
+                  title={titleParts.join('\n')}
                 >
                   <strong>{sample.number}</strong>
                   <span>{sample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</span>
+                  {warnings.length > 0 && <i className="sample-warning" aria-label={`${warnings.length} öneri`}>⚠</i>}
                   {complete && <i>✓</i>}
                 </button>
               );
@@ -236,7 +286,7 @@ export default function App() {
           <div className="editor-head">
             <div><span>Rapor {activeSample.number}</span><h2>{activeSample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</h2></div>
             <div className="editor-head__actions">
-              <button type="button" className="nds-button" onClick={applyNdsPreset}>NDS</button>
+              <button type="button" className="nds-button" onClick={applyNdsPreset} title="Kısayol: Alt+N">NDS</button>
             </div>
           </div>
           {activeWarnings.length > 0 && (
@@ -270,7 +320,7 @@ export default function App() {
             <div className="preview-stains"><pre>{`EK BOYALAR\n${stainText}`}</pre></div>
           </div>
           <div className="copy-stack">
-            <button className="primary" type="button" onClick={() => void copyAll()}>Tümünü kopyala</button>
+            <button className="primary" type="button" onClick={() => void copyAll()} title="Kısayol: Ctrl+Shift+C">Tümünü kopyala</button>
           </div>
         </aside>
       </main>
