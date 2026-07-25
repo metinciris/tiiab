@@ -5,7 +5,6 @@ import { getTemplate } from './data/reportTemplates';
 import {
   automaticStainCount,
   generateAllReports,
-  generateSampleReport,
   generateSampleReportBody,
   generateStainText,
 } from './lib/report';
@@ -32,6 +31,15 @@ async function copyText(text: string): Promise<void> {
 
 function reNumber(samples: Sample[]): Sample[] {
   return samples.map((sample, index) => ({ ...sample, number: index + 1 }));
+}
+
+function isSampleComplete(sample: Sample): boolean {
+  const microscopySections = getTemplate(sample.mode).sections.filter((section) => (
+    !section.exclusive && section.title.toLocaleLowerCase('tr-TR') !== 'hücre bloğu'
+  ));
+  return microscopySections.length > 0 && microscopySections.every((section) => (
+    section.options.some((option) => sample.selections[option.id] !== undefined)
+  ));
 }
 
 const TIIAB_NDS: SelectionState = {
@@ -61,7 +69,6 @@ export default function App() {
 
   const activeSample = state.samples.find((sample) => sample.id === state.activeSampleId) ?? state.samples[0];
   const template = getTemplate(activeSample.mode);
-  const activeIndex = state.samples.findIndex((sample) => sample.id === activeSample.id);
   const stainCount = state.stainCountOverride ?? automaticStainCount(state.samples.length);
   const stainText = useMemo(
     () => generateStainText(state.samples.length, state.stainCountOverride),
@@ -123,7 +130,7 @@ export default function App() {
       const sample = createSample(current.samples.length + 1, mode);
       return { ...current, samples: [...current.samples, sample], activeSampleId: sample.id };
     });
-    notify(mode === 'tiiab' ? 'TİİAB alanı eklendi' : 'Diğer alanı eklendi');
+    notify(mode === 'tiiab' ? 'TİİAB alanı eklendi' : 'LAP alanı eklendi');
   }
 
   function deleteSample(id: string) {
@@ -156,17 +163,6 @@ export default function App() {
     notify(activeSample.mode === 'tiiab' ? 'TİİAB NDS seçildi' : 'Diğer NDS seçildi');
   }
 
-  async function copyActive(moveNext = false) {
-    await copyText(generateSampleReport(activeSample, state.samples.length, state.stainCountOverride));
-    const copiedAt = new Date().toISOString();
-    setState((current) => {
-      const samples = current.samples.map((sample) => sample.id === activeSample.id ? { ...sample, copiedAt } : sample);
-      const next = moveNext ? samples[activeIndex + 1] : undefined;
-      return { ...current, samples, activeSampleId: next?.id ?? current.activeSampleId };
-    });
-    notify(moveNext && state.samples[activeIndex + 1] ? 'Kopyalandı, sonraki rapora geçildi' : 'Rapor kopyalandı');
-  }
-
   async function copyAll() {
     await copyText(generateAllReports(state));
     notify('Tüm rapor kopyalandı');
@@ -182,18 +178,22 @@ export default function App() {
           </div>
 
           <div className="sample-list">
-            {state.samples.map((sample) => (
-              <button
-                type="button"
-                key={sample.id}
-                className={`sample-item sample-item--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`}
-                onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
-              >
-                <strong>{sample.number}</strong>
-                <span>{sample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</span>
-                {sample.copiedAt && <i>✓</i>}
-              </button>
-            ))}
+            {state.samples.map((sample) => {
+              const complete = isSampleComplete(sample);
+              return (
+                <button
+                  type="button"
+                  key={sample.id}
+                  className={`sample-item sample-item--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`}
+                  onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
+                  title={complete ? 'Mikroskopi satırları tamamlandı' : 'Mikroskopi satırlarında eksik seçim var'}
+                >
+                  <strong>{sample.number}</strong>
+                  <span>{sample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</span>
+                  {complete && <i>✓</i>}
+                </button>
+              );
+            })}
           </div>
 
           <div className="toolbar-tail">
@@ -233,9 +233,7 @@ export default function App() {
             <div className="preview-stains"><pre>{`EK BOYALAR\n${stainText}`}</pre></div>
           </div>
           <div className="copy-stack">
-            <button className="primary" type="button" onClick={() => void copyActive(false)}>Seçili raporu kopyala</button>
-            <button type="button" disabled={!state.samples[activeIndex + 1]} onClick={() => void copyActive(true)}>Kopyala ve sonraki</button>
-            <button type="button" onClick={() => void copyAll()}>Tümünü kopyala</button>
+            <button className="primary" type="button" onClick={() => void copyAll()}>Tümünü kopyala</button>
           </div>
         </aside>
       </main>
