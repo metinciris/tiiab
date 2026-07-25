@@ -91,8 +91,13 @@ describe('rapor metni sözleşmesi', () => {
     };
 
     const report = generateAllReports(state);
-    expect(report).toContain('   - Eşlik eden diğer yapılar: Yok.\n\n2- (Örnek NO:2)');
-    expect(report).toContain('   - Eşlik eden diğer yapılar: Yok.\n\n\n\nEK BOYALAR\n');
+    const stainSeparator = '\n\n\n\nEK BOYALAR\n';
+    const parts = report.split(stainSeparator);
+
+    expect(parts).toHaveLength(2);
+    expect(parts[0]).toContain('   - Eşlik eden diğer yapılar: Yok.\n\n2- (Örnek NO:2)');
+    expect(parts[0]).toMatch(/   - Eşlik eden lenfositler ve diğer yapılar: Yok\.$/);
+    expect(parts[1]).toContain('6 adet histokimyasal boya');
   });
 
   it('tek raporda boya başlığını ve sayısını doğru üretir', () => {
