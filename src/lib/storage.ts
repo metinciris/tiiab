@@ -15,6 +15,7 @@ export function createSample(number: number, mode: ReportMode = 'tiiab'): Sample
     mode,
     location: getTemplate(mode).defaultLocation,
     selections: {},
+    sectionNotes: {},
     diagnosisNote: '',
     microscopyNote: '',
   };
@@ -34,11 +35,8 @@ export function createInitialState(): AppState {
 function migrateParatiroidSelections(selections: SelectionState): SelectionState {
   const migrated: SelectionState = {};
   Object.entries(selections ?? {}).forEach(([key, value]) => {
-    if (key.startsWith('paratiroid-')) {
-      migrated[key.replace(/^paratiroid-/, 'LAP-')] = value;
-    } else {
-      migrated[key] = value;
-    }
+    if (key.startsWith('paratiroid-')) migrated[key.replace(/^paratiroid-/, 'LAP-')] = value;
+    else migrated[key] = value;
   });
   return migrated;
 }
@@ -57,6 +55,7 @@ function migrateSample(sample: StoredSample, index: number): Sample {
     mode,
     location: sample.location || getTemplate(mode).defaultLocation,
     selections,
+    sectionNotes: sample.sectionNotes ?? {},
     diagnosisNote: sample.diagnosisNote ?? '',
     microscopyNote: sample.microscopyNote ?? '',
     copiedAt: sample.copiedAt,
@@ -68,9 +67,7 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return createInitialState();
     const parsed = JSON.parse(raw) as Partial<AppState> & { samples?: StoredSample[] };
-    if (parsed.version !== 1 || !Array.isArray(parsed.samples) || parsed.samples.length === 0) {
-      return createInitialState();
-    }
+    if (parsed.version !== 1 || !Array.isArray(parsed.samples) || parsed.samples.length === 0) return createInitialState();
 
     const samples = parsed.samples.map(migrateSample);
     const activeSampleId = samples.some((sample) => sample.id === parsed.activeSampleId)
