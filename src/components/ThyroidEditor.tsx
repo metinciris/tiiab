@@ -1,5 +1,6 @@
 import { DenseSection } from './DenseSection';
 import { EditorNotes } from './EditorNotes';
+import { OptionalMicroscopySection } from './OptionalMicroscopySection';
 import type { ReportTemplate, Sample } from '../types';
 
 type Props = {
@@ -10,7 +11,9 @@ type Props = {
 };
 
 export function ThyroidEditor({ sample, template, onCycle, onChange }: Props) {
-  const [diagnosis, ...microscopy] = template.sections;
+  const [diagnosis, ...allMicroscopy] = template.sections;
+  const extraSection = allMicroscopy.find((section) => section.id.endsWith('-extra'));
+  const microscopy = allMicroscopy.filter((section) => !section.id.endsWith('-extra'));
   const isCustomLocation = sample.location !== 'Tiroid';
   const onNoteChange = (sectionId: string, value: string) => onChange({
     sectionNotes: { ...sample.sectionNotes, [sectionId]: value },
@@ -45,6 +48,16 @@ export function ThyroidEditor({ sample, template, onCycle, onChange }: Props) {
           <DenseSection key={section.id} section={section} sample={sample} tone="thyroid" onCycle={onCycle} onNoteChange={onNoteChange} />
         ))}
       </div>
+
+      {extraSection && (
+        <OptionalMicroscopySection
+          section={extraSection}
+          sample={sample}
+          tone="thyroid"
+          onCycle={onCycle}
+          onNoteChange={onNoteChange}
+        />
+      )}
 
       <EditorNotes sample={sample} onChange={onChange} />
     </div>
