@@ -1,0 +1,58 @@
+name: Deploy TİİAB to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kaynak kodu al
+        uses: actions/checkout@v6
+
+      - name: Node.js kur
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Bağımlılıkları yükle
+        run: npm install
+
+      - name: Uygulamayı derle
+        run: npm run build
+
+      - name: GitHub Pages yapılandırması
+        uses: actions/configure-pages@v5
+
+      - name: Derlenmiş siteyi yükle
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: GitHub Pages'e yayınla
+        id: deployment
+        uses: actions/deploy-pages@v4
