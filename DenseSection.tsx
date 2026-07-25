@@ -1,61 +1,98 @@
-import { DenseSection } from './DenseSection';
-import { EditorNotes } from './EditorNotes';
-import type { ReportTemplate, Sample } from '../types';
+import type { AppState, ReportMode, Sample, SelectionState } from '../types';
+import { getTemplate } from '../data/reportTemplates';
 
-const standardLocations = ['Tiroid loju', 'Paratiroid', 'Lenf nodu'];
+const STORAGE_KEY = 'tiiab-raporlama-state-v1';
 
-type Props = {
-  sample: Sample;
-  template: ReportTemplate;
-  onCycle: (sectionId: string, optionId: string, variantCount: number, exclusive: boolean) => void;
-  onChange: (patch: Partial<Sample>) => void;
-};
+export function createId(): string {
+  if ('randomUUID' in crypto) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
-export function OtherEditor({ sample, template, onCycle, onChange }: Props) {
-  const [diagnosis, ...microscopy] = template.sections;
-  const isCustomLocation = !standardLocations.includes(sample.location);
+export function createSample(number: number, mode: ReportMode = 'tiiab'): Sample {
+  return {
+    id: createId(),
+    number,
+    mode,
+    location: getTemplate(mode).defaultLocation,
+    selections: {},
+    diagnosisNote: '',
+    microscopyNote: '',
+  };
+}
 
-  return (
-    <div className="mode-editor other-editor">
-      <div className="other-specimen-bar">
-        <div className="other-specimen-bar__label">
-          <span>Diğer sayfası</span>
-          <strong>Örnek türü</strong>
-        </div>
-        <div className="specimen-buttons">
-          {standardLocations.map((location) => (
-            <button
-              type="button"
-              key={location}
-              className={sample.location === location ? 'is-active' : ''}
-              onClick={() => onChange({ location, copiedAt: undefined })}
-            >
-              {location === 'Lenf nodu' ? 'LAP / Lenf nodu' : location}
-            </button>
-          ))}
-        </div>
-        <label className={`custom-location ${isCustomLocation ? 'is-active' : ''}`}>
-          <span>Diğer yer</span>
-          <input
-            value={isCustomLocation ? sample.location : ''}
-            placeholder="Serbest örnek yeri"
-            onFocus={() => {
-              if (!isCustomLocation) onChange({ location: '', copiedAt: undefined });
-            }}
-            onChange={(event) => onChange({ location: event.target.value, copiedAt: undefined })}
-          />
-        </label>
-      </div>
+export function createInitialState(): AppState {
+  const first = createSample(1);
+  return {
+    version: 1,
+    samples: [first],
+    activeSampleId: first.id,
+    stainCountOverride: null,
+    updatedAt: new Date().toISOString(),
+  };
+}
 
-      <DenseSection section={diagnosis} sample={sample} tone="other" onCycle={onCycle} />
+function migrateParatiroidSelections(selections: SelectionState): SelectionState {
+  const migrated: SelectionState = {};
+  Object.entries(selections ?? {}).forEach(([key, value]) => {
+    if (key.startsWith('paratiroid-')) {
+      migrated[key.replace(/^paratiroid-/, 'LAP-')] = value;
+    } else {
+      migrated[key] = value;
+    }
+  });
+  return migrated;
+}
 
-      <div className="dense-form" aria-label="Diğer sitoloji mikroskopi seçenekleri">
-        {microscopy.map((section) => (
-          <DenseSection key={section.id} section={section} sample={sample} tone="other" onCycle={onCycle} />
-        ))}
-      </div>
+type StoredSample = Omit<Partial<Sample>, 'mode'> & { mode?: string };
 
-      <EditorNotes sample={sample} onChange={onChange} />
-    </div>
-  );
+function migrateSample(sample: StoredSample, index: number): Sample {
+  const mode: ReportMode = sample.mode === 'tiiab' ? 'tiiab' : 'lap';
+  const selections = sample.mode === 'paratiroid'
+    ? migrateParatiroidSelections(sample.selections ?? {})
+    : (sample.selections ?? {});
+
+  return {
+    id: sample.id || createId(),
+    number: index + 1,
+    mode,
+    location: mode === 'tiiab' ? 'Tiroid' : (sample.location || getTemplate(mode).defaultLocation),
+    selections,
+    diagnosisNote: sample.diagnosisNote ?? '',
+    microscopyNote: sample.microscopyNote ?? '',
+    copiedAt: sample.copiedAt,
+  };
+}
+
+export function loadState(): AppState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return createInitialState();
+    const parsed = JSON.parse(raw) as Partial<AppState> & { samples?: StoredSample[] };
+    if (parsed.version !== 1 || !Array.isArray(parsed.samples) || parsed.samples.length === 0) {
+      return createInitialState();
+    }
+
+    const samples = parsed.samples.map(migrateSample);
+    const activeSampleId = samples.some((sample) => sample.id === parsed.activeSampleId)
+      ? String(parsed.activeSampleId)
+      : samples[0].id;
+
+    return {
+      version: 1,
+      samples,
+      activeSampleId,
+      stainCountOverride: typeof parsed.stainCountOverride === 'number' ? parsed.stainCountOverride : null,
+      updatedAt: parsed.updatedAt || new Date().toISOString(),
+    };
+  } catch {
+    return createInitialState();
+  }
+}
+
+export function saveState(state: AppState): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+export function clearSavedState(): void {
+  localStorage.removeItem(STORAGE_KEY);
 }
