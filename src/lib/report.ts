@@ -58,6 +58,8 @@ export function generateSampleReportBody(sample: Sample): string {
       .filter((value): value is string => Boolean(value));
     if (!values.length) return [];
 
+    // Hücre bloğu bağımsız bir rapor bölümü değildir; yalnızca mikroskopi
+    // içerisinde tek satır olarak yer alır.
     if (isCellBlockSection(section)) {
       return [`- Hücre bloğu: ${values.map(sentence).join(' ')}`];
     }
@@ -89,6 +91,7 @@ export function generateStainText(sampleCount: number, override: number | null):
 
 function appendStains(reportBody: string, sampleCount: number, override: number | null): string {
   const stainText = generateStainText(sampleCount, override);
+  // Rapor ile ek boya alanı arasında iki boş satır bırakılır.
   return `${reportBody}\n\n\nEK BOYALAR\n${stainText}`;
 }
 
