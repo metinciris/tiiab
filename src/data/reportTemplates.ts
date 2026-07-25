@@ -86,8 +86,36 @@ function sourceSections(sheet: 'tiiab' | 'LAP'): ReportSection[] {
   }));
 }
 
+const extraMicroscopyLabels = [
+  'Preparat kalitesi değerlendirmeyi kısmen sınırlandırmaktadır.',
+  'Kuruma artefaktı izlenmiştir.',
+  'Kalın yayma alanları mevcuttur.',
+  'Hücresel dejenerasyon belirgindir.',
+  'Akut inflamatuvar hücreler izlenmiştir.',
+  'Granülomatöz inflamasyon izlenmiştir.',
+  'Nekrotik materyal izlenmiştir.',
+  'Proteinöz materyal izlenmiştir.',
+];
+
+function createExtraMicroscopySection(prefix: 'tiiab' | 'LAP'): ReportSection {
+  return {
+    id: `${prefix}-extra`,
+    title: 'Ek mikroskopik bulgular',
+    exclusive: false,
+    options: extraMicroscopyLabels.map((label, index) => ({
+      id: `${prefix}-extra-${index + 1}`,
+      label,
+      variants: [label],
+      tumorRelated: false,
+    })),
+  };
+}
+
 const tiiabSections = sourceSections('tiiab');
 const lapSections = sourceSections('LAP');
+
+tiiabSections.push(createExtraMicroscopySection('tiiab'));
+lapSections.push(createExtraMicroscopySection('LAP'));
 
 const tiiabDiagnosisOutput: Record<string, string> = {
   'tiiab-2-E2': 'Non-diagnostik sitoloji, Bethesda 1',
