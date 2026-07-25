@@ -18,14 +18,26 @@ export function DenseSection({ section, sample, tone, onCycle, onNoteChange }: P
     <section className={`dense-section dense-section--${tone} ${section.exclusive ? 'is-diagnosis' : ''}`}>
       <div className="dense-section__label">
         <h3>{section.title}</h3>
-        <div className="section-label-actions">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
           <span>{section.exclusive ? 'Tek seçim' : 'Çoklu seçim'}</span>
-          <button type="button" className={`inline-note-toggle ${note ? 'has-note' : ''}`} onClick={() => setNoteOpen((open) => !open)}>
+          <button
+            type="button"
+            onClick={() => setNoteOpen((open) => !open)}
+            style={{
+              border: note ? '1px solid #138a5b' : '1px solid #cfd7e2',
+              background: note ? '#d9f4e7' : '#fff',
+              color: note ? '#0b5f3e' : '#52627a',
+              borderRadius: 6,
+              padding: '2px 5px',
+              fontSize: 9,
+              fontWeight: 700,
+            }}
+          >
             {noteOpen ? 'Kapat' : 'Elle yaz'}
           </button>
         </div>
       </div>
-      <div className="dense-section__content">
+      <div style={{ minWidth: 0 }}>
         <div className="dense-option-grid">
           {section.options.map((option) => (
             <ToggleCard
@@ -38,11 +50,19 @@ export function DenseSection({ section, sample, tone, onCycle, onNoteChange }: P
         </div>
         {noteOpen && (
           <input
-            className="inline-note-input"
             value={note}
             autoFocus
             placeholder={`${section.title} için serbest metin`}
             onChange={(event) => onNoteChange(section.id, event.target.value)}
+            style={{
+              width: '100%',
+              marginTop: 5,
+              border: '1px solid #8fa2b8',
+              borderRadius: 7,
+              padding: '6px 8px',
+              fontSize: 12,
+              background: '#fffdf5',
+            }}
           />
         )}
       </div>
