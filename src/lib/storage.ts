@@ -55,7 +55,7 @@ function migrateSample(sample: StoredSample, index: number): Sample {
     id: sample.id || createId(),
     number: index + 1,
     mode,
-    location: sample.location || getTemplate(mode).defaultLocation,
+    location: mode === 'tiiab' ? 'Tiroid' : (sample.location || getTemplate(mode).defaultLocation),
     selections,
     diagnosisNote: sample.diagnosisNote ?? '',
     microscopyNote: sample.microscopyNote ?? '',
