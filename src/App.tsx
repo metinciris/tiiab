@@ -169,7 +169,13 @@ export default function App() {
     <div className="app-shell">
       <main className="workspace">
         <nav className="report-toolbar" aria-label="Rapor alanları">
-          <button type="button" className="reset-top-button" onClick={resetActiveSample}>Raporu sıfırla</button>
+          <button
+            type="button"
+            onClick={resetActiveSample}
+            style={{ border: '1px solid #8f1724', background: '#b42333', color: '#fff', borderRadius: 8, padding: '10px 12px', fontWeight: 850, whiteSpace: 'nowrap' }}
+          >
+            Raporu sıfırla
+          </button>
 
           <div className="add-mode-bar" aria-label="Yeni rapor ekle">
             <button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')}>＋ TİİAB</button>
