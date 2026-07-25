@@ -77,12 +77,9 @@ export default function App() {
     const container = previewScrollRef.current;
     const item = previewItemRefs.current[activeSample.id];
     if (!container || !item) return;
-
     const containerRect = container.getBoundingClientRect();
     const itemRect = item.getBoundingClientRect();
-    const targetTop = container.scrollTop
-      + (itemRect.top - containerRect.top)
-      - (container.clientHeight - itemRect.height) / 2;
+    const targetTop = container.scrollTop + (itemRect.top - containerRect.top) - (container.clientHeight - itemRect.height) / 2;
     container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   }, [activeSample.id, state.samples.length]);
 
@@ -109,13 +106,9 @@ export default function App() {
         const section = getTemplate(sample.mode).sections.find((item) => item.id === sectionId);
         section?.options.forEach((option) => delete nextSelections[option.id]);
       }
-      if (current === undefined) {
-        nextSelections[optionId] = 0;
-      } else if (current + 1 < variantCount) {
-        nextSelections[optionId] = current + 1;
-      } else {
-        delete nextSelections[optionId];
-      }
+      if (current === undefined) nextSelections[optionId] = 0;
+      else if (current + 1 < variantCount) nextSelections[optionId] = current + 1;
+      else delete nextSelections[optionId];
       return { ...sample, selections: nextSelections, copiedAt: undefined };
     });
   }
@@ -129,12 +122,7 @@ export default function App() {
   }
 
   function duplicateSample() {
-    const duplicated: Sample = {
-      ...activeSample,
-      id: createId(),
-      number: state.samples.length + 1,
-      copiedAt: undefined,
-    };
+    const duplicated: Sample = { ...activeSample, id: createId(), number: state.samples.length + 1, copiedAt: undefined };
     setState((current) => ({ ...current, samples: [...current.samples, duplicated], activeSampleId: duplicated.id }));
     notify('Alan çoğaltıldı');
   }
@@ -154,11 +142,7 @@ export default function App() {
   }
 
   function resetActiveSample() {
-    updateActive((sample) => ({
-      ...createSample(sample.number, sample.mode),
-      id: sample.id,
-      number: sample.number,
-    }));
+    updateActive((sample) => ({ ...createSample(sample.number, sample.mode), id: sample.id, number: sample.number }));
     notify('Bu alan sıfırlandı');
   }
 
@@ -206,178 +190,47 @@ export default function App() {
       <header className="topbar">
         <div className="brand-block">
           <p className="eyebrow">Yerel kayıtlı · düz yazı çıktı</p>
-          <h1>Sitoloji Raporlama <span className="version-badge">v1.3.1</span></h1>
+          <h1>Sitoloji Raporlama <span className="version-badge">v1.3.2</span></h1>
         </div>
-        <div className="storage-status" title="Her tıklamada tarayıcıya otomatik kaydedilir.">
-          <span className="storage-dot" />
-          Kaydedildi · {Number.isNaN(lastSavedAt.getTime()) ? 'şimdi' : lastSavedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-        </div>
+        <div className="storage-status"><span className="storage-dot" />Kaydedildi · {lastSavedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</div>
       </header>
 
       <main className="workspace">
         <aside className="sidebar">
-          <div className="sidebar__head">
-            <div>
-              <span className="sidebar__label">Raporlar</span>
-              <strong>{state.samples.length} alan</strong>
-            </div>
-          </div>
-
+          <div className="sidebar__head"><div><span className="sidebar__label">Raporlar</span><strong>{state.samples.length} alan</strong></div></div>
           <div className="sample-list">
             {state.samples.map((sample) => {
               const sampleTemplate = getTemplate(sample.mode);
               return (
-                <button
-                  type="button"
-                  key={sample.id}
-                  className={`sample-item sample-item--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`}
-                  onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
-                >
+                <button type="button" key={sample.id} className={`sample-item sample-item--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`} onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}>
                   <span className="sample-number">{sample.number}</span>
-                  <span className="sample-text">
-                    <strong>{sample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</strong>
-                    <small>{sample.location || sampleTemplate.defaultLocation}</small>
-                  </span>
+                  <span className="sample-text"><strong>{sample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</strong><small>{sample.location || sampleTemplate.defaultLocation}</small></span>
                   <span className={`sample-state ${sample.copiedAt ? 'is-done' : ''}`}>{sample.copiedAt ? '✓' : '•'}</span>
                 </button>
               );
             })}
           </div>
-
-          <div className="add-mode-bar" aria-label="Yeni rapor alanı ekle">
-            <button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')}>
-              <span>＋</span> TİİAB
-            </button>
-            <button type="button" className="add-mode-bar__other" onClick={() => addSample('lap')}>
-              Diğer <span>＋</span>
-            </button>
-          </div>
-
-          <div className="sidebar-actions">
-            <button className="ghost" type="button" onClick={duplicateSample}>Çoğalt</button>
-            <button className="ghost danger-text" type="button" onClick={() => deleteSample(activeSample.id)}>Sil</button>
-          </div>
-
-          <div className="stain-card">
-            <div className="stain-card__head">
-              <span>Ek boya</span>
-              <strong>{stainCount}</strong>
-            </div>
-            <small>Rapora otomatik eklenir</small>
-            <label>
-              Manuel
-              <input
-                type="number"
-                min="0"
-                value={state.stainCountOverride ?? ''}
-                placeholder="Otomatik"
-                onChange={(event) => setState((current) => ({
-                  ...current,
-                  stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)),
-                }))}
-              />
-            </label>
-          </div>
-
-          <div className="backup-actions">
-            <button className="ghost" type="button" onClick={exportBackup}>Yedek indir</button>
-            <button className="ghost" type="button" onClick={() => importRef.current?.click()}>Yedek yükle</button>
-            <input
-              ref={importRef}
-              type="file"
-              accept="application/json"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void importBackup(file);
-                event.target.value = '';
-              }}
-            />
-          </div>
+          <div className="add-mode-bar"><button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')}>＋ TİİAB</button><button type="button" className="add-mode-bar__other" onClick={() => addSample('lap')}>Diğer ＋</button></div>
+          <div className="sidebar-actions"><button type="button" onClick={duplicateSample}>Çoğalt</button><button type="button" onClick={() => deleteSample(activeSample.id)}>Sil</button></div>
+          <div className="stain-card"><div className="stain-card__head"><span>Ek boya</span><strong>{stainCount}</strong></div><small>Rapora otomatik eklenir</small><label>Manuel<input type="number" min="0" value={state.stainCountOverride ?? ''} placeholder="Otomatik" onChange={(event) => setState((current) => ({ ...current, stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)) }))} /></label></div>
+          <div className="backup-actions"><button type="button" onClick={exportBackup}>Yedek indir</button><button type="button" onClick={() => importRef.current?.click()}>Yedek yükle</button><input ref={importRef} type="file" accept="application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBackup(file); event.target.value = ''; }} /></div>
         </aside>
 
         <section className="editor">
-          <div className="editor-head">
-            <div>
-              <span className="editor-index">Rapor {activeSample.number}</span>
-              <h2>{activeSample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</h2>
-              <small className="editor-subtitle">{template.title}</small>
-            </div>
-            <div className="editor-head__actions">
-              <button className="ghost" type="button" onClick={resetActiveSample}>Alanı sıfırla</button>
-              <button className="ghost danger-text" type="button" onClick={resetAll}>Tümünü sıfırla</button>
-            </div>
-          </div>
-
-          <div className="click-hint">
-            Tıkla: seç · tekrar tıkla: sonraki metin · son metinden sonra kapat. Seçili bulgular yeşil, tümör ilişkili seçili bulgular kırmızıdır.
-          </div>
-
-          {activeSample.mode === 'tiiab' ? (
-            <ThyroidEditor
-              sample={activeSample}
-              template={template}
-              onCycle={cycleOption}
-              onChange={updateActivePatch}
-            />
-          ) : (
-            <OtherEditor
-              sample={activeSample}
-              template={template}
-              onCycle={cycleOption}
-              onChange={updateActivePatch}
-            />
-          )}
+          <div className="editor-head"><div><span className="editor-index">Rapor {activeSample.number}</span><h2>{activeSample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</h2><small className="editor-subtitle">{template.title}</small></div><div className="editor-head__actions"><button type="button" onClick={resetActiveSample}>Alanı sıfırla</button><button type="button" onClick={resetAll}>Tümünü sıfırla</button></div></div>
+          <div className="click-hint">Tıkla: seç · tekrar tıkla: sonraki metin · son metinden sonra kapat. Seçili bulgular yeşil, tümör ilişkili seçili bulgular kırmızıdır.</div>
+          {activeSample.mode === 'tiiab' ? <ThyroidEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} /> : <OtherEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />}
         </section>
 
         <aside className="preview-panel">
-          <div className="preview-head">
-            <div>
-              <span>Canlı rapor</span>
-              <strong>Tümü</strong>
-            </div>
-            <small>Seçili rapor renkli gösterilir</small>
-          </div>
-
+          <div className="preview-head"><div><span>Canlı rapor</span><strong>Tümü</strong></div><small>Seçili rapor renkli gösterilir</small></div>
           <div className="report-output report-output--all" ref={previewScrollRef}>
-            {state.samples.map((sample) => (
-              <div
-                key={sample.id}
-                ref={(element) => { previewItemRefs.current[sample.id] = element; }}
-                className={`preview-report preview-report--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    setState((current) => ({ ...current, activeSampleId: sample.id }));
-                  }
-                }}
-              >
-                <pre>{generateSampleReportBody(sample)}</pre>
-              </div>
-            ))}
-            <div className="preview-stains">
-              <pre>{`EK BOYALAR\n${stainText}`}</pre>
-            </div>
+            {state.samples.map((sample) => <div key={sample.id} ref={(element) => { previewItemRefs.current[sample.id] = element; }} className={`preview-report preview-report--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`} role="button" tabIndex={0} onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}><pre>{generateSampleReportBody(sample)}</pre></div>)}
+            <div className="preview-stains"><pre>{`EK BOYALAR\n${stainText}`}</pre></div>
           </div>
-
-          <div className="copy-stack">
-            <button className="primary" type="button" onClick={() => void copyActive(false)}>Seçili raporu kopyala</button>
-            <button
-              className="secondary"
-              type="button"
-              disabled={!state.samples[activeIndex + 1]}
-              onClick={() => void copyActive(true)}
-            >
-              Kopyala ve sonraki rapora geç
-            </button>
-            <button className="secondary" type="button" onClick={() => void copyAll()}>Tüm raporu kopyala</button>
-          </div>
+          <div className="copy-stack"><button className="primary" type="button" onClick={() => void copyActive(false)}>Seçili raporu kopyala</button><button type="button" disabled={!state.samples[activeIndex + 1]} onClick={() => void copyActive(true)}>Kopyala ve sonraki rapora geç</button><button type="button" onClick={() => void copyAll()}>Tüm raporu kopyala</button></div>
         </aside>
       </main>
-
       {toast && <div className="toast" role="status" key={toast.id}>{toast.text}</div>}
     </div>
   );
