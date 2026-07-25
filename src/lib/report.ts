@@ -82,7 +82,6 @@ export function generateSampleReportBody(sample: Sample): string {
   });
 
   if (microscopyLines.length || sample.microscopyNote.trim()) {
-    lines.push('', 'MİKROSKOPİ');
     lines.push(...microscopyLines);
     if (sample.microscopyNote.trim()) lines.push(`- Ek not: ${sentence(sample.microscopyNote)}`);
   }
@@ -104,7 +103,7 @@ export function generateStainText(sampleCount: number, override: number | null):
 }
 
 function appendStains(reportBody: string, sampleCount: number, override: number | null): string {
-  return `${reportBody}\n\n\nEK BOYALAR\n${generateStainText(sampleCount, override)}`;
+  return `${reportBody}\n\n\n\nEK BOYALAR\n${generateStainText(sampleCount, override)}`;
 }
 
 export function generateSampleReport(sample: Sample, sampleCount = 1, override: number | null = null): string {
