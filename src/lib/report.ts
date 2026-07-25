@@ -77,13 +77,13 @@ export function generateSampleReportBody(sample: Sample): string {
     const combined = [...values, sectionNote].filter(Boolean).map(sentence);
     if (!combined.length) return [];
 
-    if (isCellBlockSection(section)) return [`- Hücre bloğu: ${combined.join(' ')}`];
-    return [`- ${section.title}: ${combined.join(' ')}`];
+    if (isCellBlockSection(section)) return [`   - Hücre bloğu: ${combined.join(' ')}`];
+    return [`   - ${section.title}: ${combined.join(' ')}`];
   });
 
   if (microscopyLines.length || sample.microscopyNote.trim()) {
     lines.push(...microscopyLines);
-    if (sample.microscopyNote.trim()) lines.push(`- Ek not: ${sentence(sample.microscopyNote)}`);
+    if (sample.microscopyNote.trim()) lines.push(`   - Ek not: ${sentence(sample.microscopyNote)}`);
   }
 
   return lines.join('\n').trim();
