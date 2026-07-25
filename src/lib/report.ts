@@ -11,6 +11,36 @@ export function sentence(value: string): string {
   return /[.!?;:]$/.test(clean) ? clean : `${clean}.`;
 }
 
+function stripTerminalPunctuation(value: string): string {
+  return normalizeText(value).replace(/[.!?;:,]+$/g, '').trim();
+}
+
+function startsWithProtectedToken(value: string): boolean {
+  return /^[a-zçğıöşü]\d/u.test(value) || /^[A-ZÇĞİÖŞÜ]{2,}(?:\s|[-/]|$)/u.test(value);
+}
+
+function upperInitial(value: string): string {
+  if (!value || startsWithProtectedToken(value)) return value;
+  const characters = Array.from(value);
+  return `${characters[0].toLocaleUpperCase('tr-TR')}${characters.slice(1).join('')}`;
+}
+
+function lowerInitial(value: string): string {
+  if (!value || startsWithProtectedToken(value)) return value;
+  const characters = Array.from(value);
+  return `${characters[0].toLocaleLowerCase('tr-TR')}${characters.slice(1).join('')}`;
+}
+
+function microscopySentence(values: string[]): string {
+  const fragments = values.map(stripTerminalPunctuation).filter(Boolean);
+  if (!fragments.length) return '';
+
+  const ordered = fragments.map((fragment, index) => (
+    index === 0 ? upperInitial(fragment) : lowerInitial(fragment)
+  ));
+  return `${ordered.join(', ')}.`;
+}
+
 export function selectedVariant(sample: Sample, option: ReportOption): string | null {
   const index = sample.selections[option.id];
   if (index === undefined || index < 0 || index >= option.variants.length) return null;
@@ -74,16 +104,17 @@ export function generateSampleReportBody(sample: Sample): string {
       .map((option) => selectedOutput(sample, option))
       .filter((value): value is string => Boolean(value));
     const sectionNote = sample.sectionNotes?.[section.id]?.trim();
-    const combined = [...values, sectionNote].filter(Boolean).map(sentence);
-    if (!combined.length) return [];
+    const combined = [...values, sectionNote].filter((value): value is string => Boolean(value));
+    const combinedText = microscopySentence(combined);
+    if (!combinedText) return [];
 
-    if (isCellBlockSection(section)) return [`   - Hücre bloğu: ${combined.join(' ')}`];
-    return [`   - ${section.title}: ${combined.join(' ')}`];
+    if (isCellBlockSection(section)) return [`   - Hücre bloğu: ${combinedText}`];
+    return [`   - ${section.title}: ${combinedText}`];
   });
 
   if (microscopyLines.length || sample.microscopyNote.trim()) {
     lines.push(...microscopyLines);
-    if (sample.microscopyNote.trim()) lines.push(`   - Ek not: ${sentence(sample.microscopyNote)}`);
+    if (sample.microscopyNote.trim()) lines.push(`   - Ek not: ${microscopySentence([sample.microscopyNote])}`);
   }
 
   return lines.join('\n').trim();
