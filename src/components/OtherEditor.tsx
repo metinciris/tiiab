@@ -2,7 +2,7 @@ import { DenseSection } from './DenseSection';
 import { EditorNotes } from './EditorNotes';
 import type { ReportTemplate, Sample } from '../types';
 
-const standardLocations = ['Tiroid loju', 'Paratiroid', 'Lenf nodu'];
+const standardLocations = ['Lenf nodu', 'Tiroid loju', 'Paratiroid'];
 
 type Props = {
   sample: Sample;
