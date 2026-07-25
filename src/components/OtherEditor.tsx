@@ -1,5 +1,6 @@
 import { DenseSection } from './DenseSection';
 import { EditorNotes } from './EditorNotes';
+import { OptionalMicroscopySection } from './OptionalMicroscopySection';
 import type { ReportTemplate, Sample } from '../types';
 
 const standardLocations = ['Lenf nodu', 'Tiroid loju', 'Paratiroid'];
@@ -12,7 +13,9 @@ type Props = {
 };
 
 export function OtherEditor({ sample, template, onCycle, onChange }: Props) {
-  const [diagnosis, ...microscopy] = template.sections;
+  const [diagnosis, ...allMicroscopy] = template.sections;
+  const extraSection = allMicroscopy.find((section) => section.id.endsWith('-extra'));
+  const microscopy = allMicroscopy.filter((section) => !section.id.endsWith('-extra'));
   const isCustomLocation = !standardLocations.includes(sample.location);
   const onNoteChange = (sectionId: string, value: string) => onChange({
     sectionNotes: { ...sample.sectionNotes, [sectionId]: value },
@@ -56,6 +59,16 @@ export function OtherEditor({ sample, template, onCycle, onChange }: Props) {
           <DenseSection key={section.id} section={section} sample={sample} tone="other" onCycle={onCycle} onNoteChange={onNoteChange} />
         ))}
       </div>
+
+      {extraSection && (
+        <OptionalMicroscopySection
+          section={extraSection}
+          sample={sample}
+          tone="other"
+          onCycle={onCycle}
+          onNoteChange={onNoteChange}
+        />
+      )}
 
       <EditorNotes sample={sample} onChange={onChange} />
     </div>
