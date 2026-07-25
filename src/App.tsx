@@ -9,21 +9,11 @@ import {
   generateSampleReportBody,
   generateStainText,
 } from './lib/report';
-import { clearSavedState, createId, createInitialState, createSample, loadState, saveState } from './lib/storage';
-import type { AppState, ReportMode, Sample } from './types';
+import { createSample, loadState, saveState } from './lib/storage';
+import type { AppState, ReportMode, Sample, SelectionState } from './types';
 import './styles.css';
 
 type Toast = { id: number; text: string } | null;
-
-function downloadText(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
 
 async function copyText(text: string): Promise<void> {
   if (navigator.clipboard?.writeText) {
@@ -44,11 +34,28 @@ function reNumber(samples: Sample[]): Sample[] {
   return samples.map((sample, index) => ({ ...sample, number: index + 1 }));
 }
 
+const TIIAB_NDS: SelectionState = {
+  'tiiab-2-E2': 0,
+  'tiiab-3-E3': 0,
+  'tiiab-4-E4': 0,
+  'tiiab-5-E5': 0,
+  'tiiab-6-E6': 0,
+  'tiiab-7-E7': 0,
+};
+
+const OTHER_NDS: SelectionState = {
+  'LAP-2-E2': 0,
+  'LAP-3-E3': 0,
+  'LAP-3-M3': 1,
+  'LAP-4-E4': 0,
+  'LAP-5-E5': 0,
+  'LAP-6-E6': 0,
+  'LAP-7-E7': 0,
+};
+
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState());
   const [toast, setToast] = useState<Toast>(null);
-  const [lastSavedAt, setLastSavedAt] = useState(() => new Date(state.updatedAt));
-  const importRef = useRef<HTMLInputElement>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
   const previewItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -62,9 +69,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    const savedAt = new Date();
-    saveState({ ...state, updatedAt: savedAt.toISOString() });
-    setLastSavedAt(savedAt);
+    saveState({ ...state, updatedAt: new Date().toISOString() });
   }, [state]);
 
   useEffect(() => {
@@ -79,7 +84,7 @@ export default function App() {
     if (!container || !item) return;
     const containerRect = container.getBoundingClientRect();
     const itemRect = item.getBoundingClientRect();
-    const targetTop = container.scrollTop + (itemRect.top - containerRect.top) - (container.clientHeight - itemRect.height) / 2;
+    const targetTop = container.scrollTop + (itemRect.top - containerRect.top) - 24;
     container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   }, [activeSample.id, state.samples.length]);
 
@@ -118,13 +123,7 @@ export default function App() {
       const sample = createSample(current.samples.length + 1, mode);
       return { ...current, samples: [...current.samples, sample], activeSampleId: sample.id };
     });
-    notify(mode === 'tiiab' ? 'Yeni TİİAB alanı eklendi' : 'Yeni Diğer alanı eklendi');
-  }
-
-  function duplicateSample() {
-    const duplicated: Sample = { ...activeSample, id: createId(), number: state.samples.length + 1, copiedAt: undefined };
-    setState((current) => ({ ...current, samples: [...current.samples, duplicated], activeSampleId: duplicated.id }));
-    notify('Alan çoğaltıldı');
+    notify(mode === 'tiiab' ? 'TİİAB alanı eklendi' : 'Diğer alanı eklendi');
   }
 
   function deleteSample(id: string) {
@@ -138,19 +137,23 @@ export default function App() {
       const next = remaining[Math.min(index, remaining.length - 1)];
       return { ...current, samples: remaining, activeSampleId: next.id };
     });
-    notify('Alan silindi');
+    notify('Rapor silindi');
   }
 
   function resetActiveSample() {
     updateActive((sample) => ({ ...createSample(sample.number, sample.mode), id: sample.id, number: sample.number }));
-    notify('Bu alan sıfırlandı');
+    notify('Rapor sıfırlandı');
   }
 
-  function resetAll() {
-    const initial = createInitialState();
-    clearSavedState();
-    setState(initial);
-    notify('Tüm alanlar sıfırlandı');
+  function applyNdsPreset() {
+    updateActive((sample) => ({
+      ...sample,
+      selections: sample.mode === 'tiiab' ? { ...TIIAB_NDS } : { ...OTHER_NDS },
+      diagnosisNote: '',
+      microscopyNote: '',
+      copiedAt: undefined,
+    }));
+    notify(activeSample.mode === 'tiiab' ? 'TİİAB NDS seçildi' : 'Diğer NDS seçildi');
   }
 
   async function copyActive(moveNext = false) {
@@ -161,74 +164,79 @@ export default function App() {
       const next = moveNext ? samples[activeIndex + 1] : undefined;
       return { ...current, samples, activeSampleId: next?.id ?? current.activeSampleId };
     });
-    notify(moveNext && state.samples[activeIndex + 1] ? 'Kopyalandı, sonraki alana geçildi' : 'Rapor panoya kopyalandı');
+    notify(moveNext && state.samples[activeIndex + 1] ? 'Kopyalandı, sonraki rapora geçildi' : 'Rapor kopyalandı');
   }
 
   async function copyAll() {
     await copyText(generateAllReports(state));
-    notify('Tüm rapor panoya kopyalandı');
-  }
-
-  function exportBackup() {
-    downloadText(`tiiab-yedek-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(state, null, 2), 'application/json');
-    notify('Yedek indirildi');
-  }
-
-  async function importBackup(file: File) {
-    try {
-      const parsed = JSON.parse(await file.text()) as AppState;
-      if (parsed.version !== 1 || !Array.isArray(parsed.samples) || !parsed.samples.length) throw new Error('Geçersiz');
-      setState(parsed);
-      notify('Yedek geri yüklendi');
-    } catch {
-      notify('Yedek dosyası okunamadı');
-    }
+    notify('Tüm rapor kopyalandı');
   }
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand-block">
-          <p className="eyebrow">Yerel kayıtlı · düz yazı çıktı</p>
-          <h1>Sitoloji Raporlama <span className="version-badge">v1.3.2</span></h1>
-        </div>
-        <div className="storage-status"><span className="storage-dot" />Kaydedildi · {lastSavedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</div>
-      </header>
-
       <main className="workspace">
-        <aside className="sidebar">
-          <div className="sidebar__head"><div><span className="sidebar__label">Raporlar</span><strong>{state.samples.length} alan</strong></div></div>
-          <div className="sample-list">
-            {state.samples.map((sample) => {
-              const sampleTemplate = getTemplate(sample.mode);
-              return (
-                <button type="button" key={sample.id} className={`sample-item sample-item--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`} onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}>
-                  <span className="sample-number">{sample.number}</span>
-                  <span className="sample-text"><strong>{sample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</strong><small>{sample.location || sampleTemplate.defaultLocation}</small></span>
-                  <span className={`sample-state ${sample.copiedAt ? 'is-done' : ''}`}>{sample.copiedAt ? '✓' : '•'}</span>
-                </button>
-              );
-            })}
+        <nav className="report-toolbar" aria-label="Rapor alanları">
+          <div className="add-mode-bar" aria-label="Yeni rapor ekle">
+            <button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')}>＋ TİİAB</button>
+            <button type="button" className="add-mode-bar__other" onClick={() => addSample('lap')}>＋ Diğer</button>
           </div>
-          <div className="add-mode-bar"><button type="button" className="add-mode-bar__tiiab" onClick={() => addSample('tiiab')}>＋ TİİAB</button><button type="button" className="add-mode-bar__other" onClick={() => addSample('lap')}>Diğer ＋</button></div>
-          <div className="sidebar-actions"><button type="button" onClick={duplicateSample}>Çoğalt</button><button type="button" onClick={() => deleteSample(activeSample.id)}>Sil</button></div>
-          <div className="stain-card"><div className="stain-card__head"><span>Ek boya</span><strong>{stainCount}</strong></div><small>Rapora otomatik eklenir</small><label>Manuel<input type="number" min="0" value={state.stainCountOverride ?? ''} placeholder="Otomatik" onChange={(event) => setState((current) => ({ ...current, stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)) }))} /></label></div>
-          <div className="backup-actions"><button type="button" onClick={exportBackup}>Yedek indir</button><button type="button" onClick={() => importRef.current?.click()}>Yedek yükle</button><input ref={importRef} type="file" accept="application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBackup(file); event.target.value = ''; }} /></div>
-        </aside>
+
+          <div className="sample-list">
+            {state.samples.map((sample) => (
+              <button
+                type="button"
+                key={sample.id}
+                className={`sample-item sample-item--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`}
+                onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
+              >
+                <strong>{sample.number}</strong>
+                <span>{sample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</span>
+                {sample.copiedAt && <i>✓</i>}
+              </button>
+            ))}
+          </div>
+
+          <div className="toolbar-tail">
+            <label className="stain-control">Ek boya <b>{stainCount}</b><input type="number" min="0" value={state.stainCountOverride ?? ''} placeholder="Oto" onChange={(event) => setState((current) => ({ ...current, stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)) }))} /></label>
+            <button type="button" className="delete-button" onClick={() => deleteSample(activeSample.id)}>Sil</button>
+          </div>
+        </nav>
 
         <section className="editor">
-          <div className="editor-head"><div><span className="editor-index">Rapor {activeSample.number}</span><h2>{activeSample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</h2><small className="editor-subtitle">{template.title}</small></div><div className="editor-head__actions"><button type="button" onClick={resetActiveSample}>Alanı sıfırla</button><button type="button" onClick={resetAll}>Tümünü sıfırla</button></div></div>
-          <div className="click-hint">Tıkla: seç · tekrar tıkla: sonraki metin · son metinden sonra kapat. Seçili bulgular yeşil, tümör ilişkili seçili bulgular kırmızıdır.</div>
-          {activeSample.mode === 'tiiab' ? <ThyroidEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} /> : <OtherEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />}
+          <div className="editor-head">
+            <div><span>Rapor {activeSample.number}</span><h2>{activeSample.mode === 'tiiab' ? 'TİİAB' : 'Diğer'}</h2></div>
+            <div className="editor-head__actions">
+              <button type="button" onClick={resetActiveSample}>Sıfırla</button>
+              <button type="button" className="nds-button" onClick={applyNdsPreset}>NDS</button>
+            </div>
+          </div>
+          {activeSample.mode === 'tiiab'
+            ? <ThyroidEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />
+            : <OtherEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />}
         </section>
 
         <aside className="preview-panel">
-          <div className="preview-head"><div><span>Canlı rapor</span><strong>Tümü</strong></div><small>Seçili rapor renkli gösterilir</small></div>
-          <div className="report-output report-output--all" ref={previewScrollRef}>
-            {state.samples.map((sample) => <div key={sample.id} ref={(element) => { previewItemRefs.current[sample.id] = element; }} className={`preview-report preview-report--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`} role="button" tabIndex={0} onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}><pre>{generateSampleReportBody(sample)}</pre></div>)}
+          <div className="preview-head"><div><span>Canlı rapor</span><strong>Tümü</strong></div></div>
+          <div className="report-output--all" ref={previewScrollRef}>
+            {state.samples.map((sample) => (
+              <div
+                key={sample.id}
+                ref={(element) => { previewItemRefs.current[sample.id] = element; }}
+                className={`preview-report preview-report--${sample.mode} ${sample.id === activeSample.id ? 'is-active' : ''}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
+              >
+                <pre>{generateSampleReportBody(sample)}</pre>
+              </div>
+            ))}
             <div className="preview-stains"><pre>{`EK BOYALAR\n${stainText}`}</pre></div>
           </div>
-          <div className="copy-stack"><button className="primary" type="button" onClick={() => void copyActive(false)}>Seçili raporu kopyala</button><button type="button" disabled={!state.samples[activeIndex + 1]} onClick={() => void copyActive(true)}>Kopyala ve sonraki rapora geç</button><button type="button" onClick={() => void copyAll()}>Tüm raporu kopyala</button></div>
+          <div className="copy-stack">
+            <button className="primary" type="button" onClick={() => void copyActive(false)}>Seçili raporu kopyala</button>
+            <button type="button" disabled={!state.samples[activeIndex + 1]} onClick={() => void copyActive(true)}>Kopyala ve sonraki</button>
+            <button type="button" onClick={() => void copyAll()}>Tümünü kopyala</button>
+          </div>
         </aside>
       </main>
       {toast && <div className="toast" role="status" key={toast.id}>{toast.text}</div>}
