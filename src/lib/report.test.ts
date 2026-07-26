@@ -41,39 +41,42 @@ const OTHER_NDS: SelectionState = {
 };
 
 describe('rapor metni sözleşmesi', () => {
-  it('tek Diğer NDS raporunda Örnek NO alanını kullanmaz', () => {
+  it('tek Diğer NDS raporunda sıra ve Örnek NO alanını kullanmaz', () => {
     const report = generateSampleReportBody(sample('lap', OTHER_NDS));
 
     expect(report).toBe([
-      '1- Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.',
+      'Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.',
       '   - Yeterlilik: Lenfosit yoktur, epitelyal hücre yoktur.',
       '   - Atipik hücre varlığı: Atipik hücre yoktur.',
       '   - Kolloid: Yok.',
       '   - Makrofaj: Yok.',
       '   - Eşlik eden diğer yapılar: Yok.',
     ].join('\n'));
+    expect(report).not.toMatch(/^1-/);
     expect(report).not.toContain('Örnek NO');
     expect(report).not.toContain('MİKROSKOPİ');
   });
 
-  it('tek TİİAB NDS raporunda Örnek NO alanını kullanmaz', () => {
+  it('tek TİİAB NDS raporunda sıra ve Örnek NO alanını kullanmaz', () => {
     const report = generateSampleReportBody(sample('tiiab', TIIAB_NDS));
 
     expect(report.startsWith(
-      '1- Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji: Non-diagnostik sitoloji, Bethesda 1.',
+      'Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji: Non-diagnostik sitoloji, Bethesda 1.',
     )).toBe(true);
+    expect(report).not.toMatch(/^1-/);
     expect(report).not.toContain('Örnek NO');
     expect(report.split('\n').slice(1).every((line) => line.startsWith('   - '))).toBe(true);
   });
 
-  it('tek örnekte elle yazılan alınma yerini korur ancak Örnek NO eklemez', () => {
+  it('tek örnekte elle yazılan alınma yerini korur ancak sıra ve Örnek NO eklemez', () => {
     const custom = sample('lap', OTHER_NDS);
     custom.location = 'Sağ servikal seviye 3';
     const report = generateSampleReportBody(custom);
 
     expect(report.startsWith(
-      '1- ("Sağ servikal seviye 3") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma:',
+      '("Sağ servikal seviye 3") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma:',
     )).toBe(true);
+    expect(report).not.toMatch(/^1-/);
     expect(report).not.toContain('Örnek NO');
   });
 
@@ -92,7 +95,7 @@ describe('rapor metni sözleşmesi', () => {
     expect(report).toContain('MALİGNİTE YÖNÜNDEN KUŞKULU SİTOLOJİ.');
   });
 
-  it('birden fazla raporda Örnek NO alanlarını ve boşluk sözleşmesini korur', () => {
+  it('birden fazla raporda sıra ve Örnek NO alanlarını korur', () => {
     const first = sample('lap', OTHER_NDS, 1);
     const second = sample('tiiab', TIIAB_NDS, 2);
     const state: AppState = {

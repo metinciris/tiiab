@@ -71,23 +71,23 @@ function isCustomLocation(sample: Sample, location: string): boolean {
 
 function specimenLine(sample: Sample, location: string, sampleCount: number): string {
   const template = getTemplate(sample.mode);
-  const prefix = `${sample.number}-`;
-  const includeSampleNumber = sampleCount > 1;
+  const isMultiple = sampleCount > 1;
+  const prefix = isMultiple ? `${sample.number}- ` : '';
 
   if (!isCustomLocation(sample, location)) {
-    const sampleNumber = includeSampleNumber ? ` (Örnek NO:${sample.number})` : '';
-    return `${prefix}${sampleNumber} ${template.specimenText(location || template.defaultLocation)}`;
+    const sampleNumber = isMultiple ? `(Örnek NO:${sample.number}) ` : '';
+    return `${prefix}${sampleNumber}${template.specimenText(location || template.defaultLocation)}`;
   }
 
   const quotedLocation = location.replace(/"/g, '\\"');
-  const locationField = includeSampleNumber
+  const locationField = isMultiple
     ? `(Örnek NO:${sample.number}, "${quotedLocation}")`
     : `("${quotedLocation}")`;
 
   if (sample.mode === 'tiiab') {
-    return `${prefix} ${locationField} Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji`;
+    return `${prefix}${locationField} Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji`;
   }
-  return `${prefix} ${locationField} Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma`;
+  return `${prefix}${locationField} Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma`;
 }
 
 export function generateSampleReportBody(sample: Sample, sampleCount = 1): string {
