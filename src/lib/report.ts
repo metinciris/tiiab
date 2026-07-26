@@ -69,19 +69,28 @@ function isCustomLocation(sample: Sample, location: string): boolean {
   return Boolean(location) && !standardLocations.includes(location);
 }
 
-function specimenLine(sample: Sample, location: string): string {
+function specimenLine(sample: Sample, location: string, sampleCount: number): string {
   const template = getTemplate(sample.mode);
+  const prefix = `${sample.number}-`;
+  const includeSampleNumber = sampleCount > 1;
+
   if (!isCustomLocation(sample, location)) {
-    return `${sample.number}- (Örnek NO:${sample.number}) ${template.specimenText(location || template.defaultLocation)}`;
+    const sampleNumber = includeSampleNumber ? ` (Örnek NO:${sample.number})` : '';
+    return `${prefix}${sampleNumber} ${template.specimenText(location || template.defaultLocation)}`;
   }
+
   const quotedLocation = location.replace(/"/g, '\\"');
+  const locationField = includeSampleNumber
+    ? `(Örnek NO:${sample.number}, "${quotedLocation}")`
+    : `("${quotedLocation}")`;
+
   if (sample.mode === 'tiiab') {
-    return `${sample.number}- (Örnek NO:${sample.number}, "${quotedLocation}") Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji`;
+    return `${prefix} ${locationField} Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji`;
   }
-  return `${sample.number}- (Örnek NO:${sample.number}, "${quotedLocation}") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma`;
+  return `${prefix} ${locationField} Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma`;
 }
 
-export function generateSampleReportBody(sample: Sample): string {
+export function generateSampleReportBody(sample: Sample, sampleCount = 1): string {
   const template = getTemplate(sample.mode);
   const diagnosisSection = template.sections.find((section) => section.exclusive);
   const microscopySections = template.sections.filter((section) => !section.exclusive);
@@ -96,7 +105,7 @@ export function generateSampleReportBody(sample: Sample): string {
     .join(' ');
 
   const location = sample.location.trim() || template.defaultLocation;
-  const firstLine = specimenLine(sample, location);
+  const firstLine = specimenLine(sample, location, sampleCount);
   const lines: string[] = [diagnosisText ? `${firstLine}: ${diagnosisText}` : firstLine];
 
   const microscopyLines = microscopySections.flatMap((section) => {
@@ -138,11 +147,15 @@ function appendStains(reportBody: string, sampleCount: number, override: number 
 }
 
 export function generateSampleReport(sample: Sample, sampleCount = 1, override: number | null = null): string {
-  return appendStains(generateSampleReportBody(sample), sampleCount, override);
+  return appendStains(generateSampleReportBody(sample, sampleCount), sampleCount, override);
 }
 
 export function generateAllReports(state: AppState): string {
-  const reports = state.samples.filter(sampleHasContent).map(generateSampleReportBody);
-  const reportBody = reports.length ? reports.join('\n\n') : generateSampleReportBody(state.samples[0]);
+  const reports = state.samples
+    .filter(sampleHasContent)
+    .map((sample) => generateSampleReportBody(sample, state.samples.length));
+  const reportBody = reports.length
+    ? reports.join('\n\n')
+    : generateSampleReportBody(state.samples[0], state.samples.length);
   return appendStains(reportBody, state.samples.length, state.stainCountOverride);
 }

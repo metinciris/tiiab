@@ -41,27 +41,40 @@ const OTHER_NDS: SelectionState = {
 };
 
 describe('rapor metni sözleşmesi', () => {
-  it('Diğer NDS raporunu başlıksız ve üç boşluk girintili üretir', () => {
+  it('tek Diğer NDS raporunda Örnek NO alanını kullanmaz', () => {
     const report = generateSampleReportBody(sample('lap', OTHER_NDS));
 
     expect(report).toBe([
-      '1- (Örnek NO:1) Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.',
+      '1- Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.',
       '   - Yeterlilik: Lenfosit yoktur, epitelyal hücre yoktur.',
       '   - Atipik hücre varlığı: Atipik hücre yoktur.',
       '   - Kolloid: Yok.',
       '   - Makrofaj: Yok.',
       '   - Eşlik eden diğer yapılar: Yok.',
     ].join('\n'));
+    expect(report).not.toContain('Örnek NO');
     expect(report).not.toContain('MİKROSKOPİ');
   });
 
-  it('TİİAB NDS tanısını Bethesda bilgisiyle üretir', () => {
+  it('tek TİİAB NDS raporunda Örnek NO alanını kullanmaz', () => {
     const report = generateSampleReportBody(sample('tiiab', TIIAB_NDS));
 
     expect(report.startsWith(
-      '1- (Örnek NO:1) Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji: Non-diagnostik sitoloji, Bethesda 1.',
+      '1- Tiroid; İnce iğne aspirasyon biyopsisi; sıvı bazlı sitoloji: Non-diagnostik sitoloji, Bethesda 1.',
     )).toBe(true);
+    expect(report).not.toContain('Örnek NO');
     expect(report.split('\n').slice(1).every((line) => line.startsWith('   - '))).toBe(true);
+  });
+
+  it('tek örnekte elle yazılan alınma yerini korur ancak Örnek NO eklemez', () => {
+    const custom = sample('lap', OTHER_NDS);
+    custom.location = 'Sağ servikal seviye 3';
+    const report = generateSampleReportBody(custom);
+
+    expect(report.startsWith(
+      '1- ("Sağ servikal seviye 3") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma:',
+    )).toBe(true);
+    expect(report).not.toContain('Örnek NO');
   });
 
   it('çoklu mikroskopi ifadelerini virgülle tek cümlede birleştirir', () => {
@@ -79,7 +92,7 @@ describe('rapor metni sözleşmesi', () => {
     expect(report).toContain('MALİGNİTE YÖNÜNDEN KUŞKULU SİTOLOJİ.');
   });
 
-  it('raporlar arasında bir boş satır ve EK BOYALAR öncesinde üç boş satır bırakır', () => {
+  it('birden fazla raporda Örnek NO alanlarını ve boşluk sözleşmesini korur', () => {
     const first = sample('lap', OTHER_NDS, 1);
     const second = sample('tiiab', TIIAB_NDS, 2);
     const state: AppState = {
@@ -95,7 +108,8 @@ describe('rapor metni sözleşmesi', () => {
     const parts = report.split(stainSeparator);
 
     expect(parts).toHaveLength(2);
-    expect(parts[0]).toContain('   - Eşlik eden diğer yapılar: Yok.\n\n2- (Örnek NO:2)');
+    expect(parts[0]).toContain('1- (Örnek NO:1) Lenf nodu:');
+    expect(parts[0]).toContain('   - Eşlik eden diğer yapılar: Yok.\n\n2- (Örnek NO:2) Tiroid;');
     expect(parts[0]).toMatch(/   - Eşlik eden lenfositler ve diğer yapılar: Yok\.$/);
     expect(parts[1]).toContain('6 adet histokimyasal boya');
   });

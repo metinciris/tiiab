@@ -43,16 +43,33 @@ Aşağıdaki kurallar kullanıcı tarafından özellikle belirlenmiştir ve aç�
 7. `MALİGNİTE YÖNÜNDEN KUŞKULU SİTOLOJİ` ve `MALİGN SİTOLOJİ` tamamen büyük harfle kalır.
 8. Kullanıcının serbest metni de mikroskopi satırının aynı noktalama düzenine katılır.
 9. Uyarı/öneri metinleri kopyalanan patoloji raporuna eklenmez.
+10. Tek rapor/örnek varsa rapor satırında `(Örnek NO:1)` alanı kullanılmaz. Başlangıç yalnız `1-` olur.
+11. İki veya daha fazla örnek varsa her raporda `(Örnek NO:1)`, `(Örnek NO:2)` biçimindeki alanlar kullanılır.
+12. Elle yazılan alınma yeri tek örnekte de korunur; yalnız Örnek NO bölümü kaldırılır.
 
-Örnek biçim:
+Tek örnek — standart yer:
 
 ```text
-1- (Örnek NO:1) Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.
+1- Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.
    - Yeterlilik: Lenfosit yoktur, epitelyal hücre yoktur.
    - Atipik hücre varlığı: Atipik hücre yoktur.
    - Kolloid: Yok.
    - Makrofaj: Yok.
    - Eşlik eden diğer yapılar: Yok.
+```
+
+Tek örnek — elle yazılmış alınma yeri:
+
+```text
+1- ("Sağ servikal seviye 3") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: ...
+```
+
+Çoklu örnek:
+
+```text
+1- (Örnek NO:1) Lenf nodu: ...
+
+2- (Örnek NO:2) Tiroid; ...
 ```
 
 ## Sayfa ve arayüz sözleşmesi
@@ -67,6 +84,7 @@ Aşağıdaki kurallar kullanıcı tarafından özellikle belirlenmiştir ve aç�
 - Yalnız `Tümünü kopyala` ana kopyalama eylemidir.
 - “Ek mikroskopik bulgular” bölümü kapalı başlayan, isteğe bağlı ve çok seçimli kutudur; raporun tamamlanma kontrolüne dahil değildir.
 - Tasarım yoğun ve kompakt kalmalıdır; yeni seçenek veya panel eklerken ekranı gereksiz büyütme.
+- Örnek yeri için mevcut elle yazılabilir alanlar korunmalıdır.
 
 ## Tanı listesi kuralları
 

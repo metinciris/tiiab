@@ -314,7 +314,7 @@ export default function App() {
                 tabIndex={0}
                 onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
               >
-                <pre>{generateSampleReportBody(sample)}</pre>
+                <pre>{generateSampleReportBody(sample, state.samples.length)}</pre>
               </div>
             ))}
             <div className="preview-stains"><pre>{`EK BOYALAR\n${stainText}`}</pre></div>
