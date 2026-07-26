@@ -43,14 +43,14 @@ Aşağıdaki kurallar kullanıcı tarafından özellikle belirlenmiştir ve aç�
 7. `MALİGNİTE YÖNÜNDEN KUŞKULU SİTOLOJİ` ve `MALİGN SİTOLOJİ` tamamen büyük harfle kalır.
 8. Kullanıcının serbest metni de mikroskopi satırının aynı noktalama düzenine katılır.
 9. Uyarı/öneri metinleri kopyalanan patoloji raporuna eklenmez.
-10. Tek rapor/örnek varsa rapor satırında `(Örnek NO:1)` alanı kullanılmaz. Başlangıç yalnız `1-` olur.
-11. İki veya daha fazla örnek varsa her raporda `(Örnek NO:1)`, `(Örnek NO:2)` biçimindeki alanlar kullanılır.
-12. Elle yazılan alınma yeri tek örnekte de korunur; yalnız Örnek NO bölümü kaldırılır.
+10. Tek rapor/örnek varsa rapor satırında ne `1-` sıra numarası ne de `(Örnek NO:1)` alanı kullanılır.
+11. İki veya daha fazla örnek varsa her rapor `1-`, `2-` biçiminde başlar ve `(Örnek NO:1)`, `(Örnek NO:2)` alanları kullanılır.
+12. Elle yazılan alınma yeri tek örnekte de korunur; yalnız sıra ve Örnek NO bölümleri kaldırılır.
 
 Tek örnek — standart yer:
 
 ```text
-1- Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.
+Lenf nodu: Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: Nondiagnostik Sitoloji.
    - Yeterlilik: Lenfosit yoktur, epitelyal hücre yoktur.
    - Atipik hücre varlığı: Atipik hücre yoktur.
    - Kolloid: Yok.
@@ -61,7 +61,7 @@ Tek örnek — standart yer:
 Tek örnek — elle yazılmış alınma yeri:
 
 ```text
-1- ("Sağ servikal seviye 3") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: ...
+("Sağ servikal seviye 3") Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma: ...
 ```
 
 Çoklu örnek:
