@@ -51,16 +51,26 @@ function prioritizeDiagnosis(section: ReportSection, location: string): ReportSe
 type Props = {
   sample: Sample;
   template: ReportTemplate;
+  specimenOpen: boolean;
+  onSpecimenOpenChange: (open: boolean) => void;
   onCycle: (sectionId: string, optionId: string, variantCount: number, exclusive: boolean) => void;
   onChange: (patch: Partial<Sample>) => void;
 };
 
-export function OtherEditor({ sample, template, onCycle, onChange }: Props) {
+export function OtherEditor({
+  sample,
+  template,
+  specimenOpen,
+  onSpecimenOpenChange,
+  onCycle,
+  onChange,
+}: Props) {
   const [diagnosis, ...allMicroscopy] = template.sections;
   const prioritizedDiagnosis = prioritizeDiagnosis(diagnosis, sample.location);
   const extraSection = allMicroscopy.find((section) => section.id.endsWith('-extra'));
   const microscopy = allMicroscopy.filter((section) => !section.id.endsWith('-extra'));
   const isCustomLocation = !standardLocations.includes(sample.location);
+  const locationLabel = sample.location.trim() || template.defaultLocation;
   const onNoteChange = (sectionId: string, value: string) => onChange({
     sectionNotes: { ...sample.sectionNotes, [sectionId]: value },
     copiedAt: undefined,
@@ -68,33 +78,36 @@ export function OtherEditor({ sample, template, onCycle, onChange }: Props) {
 
   return (
     <div className="mode-editor other-editor">
-      <div className="other-specimen-bar">
-        <div className="other-specimen-bar__label">
-          <span>Diğer</span>
-          <strong>Örnek türü</strong>
+      <details
+        className="specimen-disclosure specimen-disclosure--other"
+        open={specimenOpen}
+        onToggle={(event) => onSpecimenOpenChange(event.currentTarget.open)}
+      >
+        <summary><span>Alınma şekli</span><strong>{locationLabel}</strong></summary>
+        <div className="specimen-disclosure__body">
+          <div className="specimen-buttons">
+            {standardLocations.map((location) => (
+              <button
+                type="button"
+                key={location}
+                className={sample.location === location ? 'is-active' : ''}
+                onClick={() => onChange({ location, copiedAt: undefined })}
+              >
+                {location === 'Lenf nodu' ? 'LAP / Lenf nodu' : location}
+              </button>
+            ))}
+          </div>
+          <label className={`custom-location ${isCustomLocation ? 'is-active' : ''}`}>
+            <span>Diğer yer</span>
+            <input
+              value={isCustomLocation ? sample.location : ''}
+              placeholder="Serbest örnek yeri"
+              onFocus={() => { if (!isCustomLocation) onChange({ location: '', copiedAt: undefined }); }}
+              onChange={(event) => onChange({ location: event.target.value, copiedAt: undefined })}
+            />
+          </label>
         </div>
-        <div className="specimen-buttons">
-          {standardLocations.map((location) => (
-            <button
-              type="button"
-              key={location}
-              className={sample.location === location ? 'is-active' : ''}
-              onClick={() => onChange({ location, copiedAt: undefined })}
-            >
-              {location === 'Lenf nodu' ? 'LAP / Lenf nodu' : location}
-            </button>
-          ))}
-        </div>
-        <label className={`custom-location ${isCustomLocation ? 'is-active' : ''}`}>
-          <span>Diğer yer</span>
-          <input
-            value={isCustomLocation ? sample.location : ''}
-            placeholder="Serbest örnek yeri"
-            onFocus={() => { if (!isCustomLocation) onChange({ location: '', copiedAt: undefined }); }}
-            onChange={(event) => onChange({ location: event.target.value, copiedAt: undefined })}
-          />
-        </label>
-      </div>
+      </details>
 
       <DenseSection section={prioritizedDiagnosis} sample={sample} tone="other" onCycle={onCycle} onNoteChange={onNoteChange} />
 

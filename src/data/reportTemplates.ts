@@ -53,7 +53,9 @@ function cleanSourceText(value: string): string {
 }
 
 function normalizeVariants(option: SourceOption): string[] {
-  return Array.from(new Set(option.variants.map(cleanSourceText).filter(Boolean)));
+  const label = cleanSourceText(option.label);
+  const variants = option.variants.map(cleanSourceText).filter(Boolean);
+  return Array.from(new Set([label, ...variants].filter(Boolean)));
 }
 
 function toOption(sheet: string, row: SourceRow, option: SourceOption): ReportOption {

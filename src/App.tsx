@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { OtherEditor } from './components/OtherEditor';
 import { ThyroidEditor } from './components/ThyroidEditor';
 import { getTemplate } from './data/reportTemplates';
+import { getMissingSections, isSampleComplete } from './lib/completion';
 import { automaticStainCount, generateAllReports, generateSampleReportBody, generateStainText } from './lib/report';
 import { clearSavedState, createInitialState, createSample, loadState, saveState } from './lib/storage';
+import { loadUiPreferences, saveUiPreferences } from './lib/uiPreferences';
 import { getSampleWarnings } from './lib/warnings';
 import type { AppState, ReportMode, Sample, SelectionState } from './types';
 import './styles.css';
@@ -29,23 +31,6 @@ function reNumber(samples: Sample[]): Sample[] {
   return samples.map((sample, index) => ({ ...sample, number: index + 1 }));
 }
 
-function requiredMicroscopySections(sample: Sample) {
-  return getTemplate(sample.mode).sections.filter((section) => (
-    !section.exclusive
-    && section.title.toLocaleLowerCase('tr-TR') !== 'hücre bloğu'
-    && !section.id.endsWith('-extra')
-  ));
-}
-
-function getMissingSections(sample: Sample): string[] {
-  return requiredMicroscopySections(sample)
-    .filter((section) => (
-      !section.options.some((option) => sample.selections[option.id] !== undefined)
-      && !sample.sectionNotes?.[section.id]?.trim()
-    ))
-    .map((section) => section.title);
-}
-
 function isBlankStarter(sample: Sample): boolean {
   const hasSelections = Object.keys(sample.selections).length > 0;
   const hasSectionNotes = Object.values(sample.sectionNotes ?? {}).some((value) => value.trim().length > 0);
@@ -56,14 +41,6 @@ function isBlankStarter(sample: Sample): boolean {
     && !hasSectionNotes
     && !hasNotes
     && sample.location.trim() === defaultLocation;
-}
-
-function isSampleComplete(sample: Sample): boolean {
-  const microscopySections = requiredMicroscopySections(sample);
-  return microscopySections.length > 0 && microscopySections.every((section) => (
-    section.options.some((option) => sample.selections[option.id] !== undefined)
-    || Boolean(sample.sectionNotes?.[section.id]?.trim())
-  ));
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -83,7 +60,7 @@ const TIIAB_NDS: SelectionState = {
 const OTHER_NDS: SelectionState = {
   'LAP-2-E2': 0,
   'LAP-3-E3': 0,
-  'LAP-3-M3': 1,
+  'LAP-3-M3': 0,
   'LAP-4-E4': 0,
   'LAP-5-E5': 0,
   'LAP-6-E6': 0,
@@ -92,6 +69,7 @@ const OTHER_NDS: SelectionState = {
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState());
+  const [uiPreferences, setUiPreferences] = useState(() => loadUiPreferences());
   const [toast, setToast] = useState<Toast>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
   const previewItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -108,6 +86,10 @@ export default function App() {
   useEffect(() => {
     saveState({ ...state, updatedAt: new Date().toISOString() });
   }, [state]);
+
+  useEffect(() => {
+    saveUiPreferences(uiPreferences);
+  }, [uiPreferences]);
 
   useEffect(() => {
     if (!toast) return;
@@ -255,7 +237,7 @@ export default function App() {
               const missingSections = getMissingSections(sample);
               const warnings = getSampleWarnings(sample);
               const titleParts = [
-                missingSections.length ? `Eksik: ${missingSections.join(', ')}` : 'Mikroskopi satırları tamamlandı',
+                missingSections.length ? `Eksik: ${missingSections.join(', ')}` : 'Tanı ve mikroskopi satırları tamamlandı',
                 warnings.length ? `Öneri: ${warnings.join(' ')}` : '',
               ].filter(Boolean);
 
@@ -277,7 +259,26 @@ export default function App() {
           </div>
 
           <div className="toolbar-tail">
-            <label className="stain-control">Ek boya <b>{stainCount}</b><input type="number" min="0" value={state.stainCountOverride ?? ''} placeholder="Oto" onChange={(event) => setState((current) => ({ ...current, stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)) }))} /></label>
+            <details
+              className="stain-disclosure"
+              open={uiPreferences.stainOpen}
+              onToggle={(event) => setUiPreferences((current) => ({ ...current, stainOpen: event.currentTarget.open }))}
+            >
+              <summary>Ek boya <b>{stainCount}</b></summary>
+              <label>
+                Manuel
+                <input
+                  type="number"
+                  min="0"
+                  value={state.stainCountOverride ?? ''}
+                  placeholder="Oto"
+                  onChange={(event) => setState((current) => ({
+                    ...current,
+                    stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)),
+                  }))}
+                />
+              </label>
+            </details>
             <button type="button" className="delete-button" onClick={() => deleteSample(activeSample.id)}>Sil</button>
           </div>
         </nav>
@@ -298,8 +299,26 @@ export default function App() {
             </aside>
           )}
           {activeSample.mode === 'tiiab'
-            ? <ThyroidEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />
-            : <OtherEditor sample={activeSample} template={template} onCycle={cycleOption} onChange={updateActivePatch} />}
+            ? (
+              <ThyroidEditor
+                sample={activeSample}
+                template={template}
+                specimenOpen={uiPreferences.specimenOpen}
+                onSpecimenOpenChange={(open) => setUiPreferences((current) => ({ ...current, specimenOpen: open }))}
+                onCycle={cycleOption}
+                onChange={updateActivePatch}
+              />
+            )
+            : (
+              <OtherEditor
+                sample={activeSample}
+                template={template}
+                specimenOpen={uiPreferences.specimenOpen}
+                onSpecimenOpenChange={(open) => setUiPreferences((current) => ({ ...current, specimenOpen: open }))}
+                onCycle={cycleOption}
+                onChange={updateActivePatch}
+              />
+            )}
         </section>
 
         <aside className="preview-panel">
