@@ -117,10 +117,36 @@ describe('rapor metni sözleşmesi', () => {
     expect(parts[1]).toContain('6 adet histokimyasal boya');
   });
 
+  it('alınma yeri kapatıldığında çoklu raporda yalnızca sıra numarasını korur', () => {
+    const first = sample('lap', OTHER_NDS, 1);
+    const second = sample('tiiab', TIIAB_NDS, 2);
+    const state: AppState = {
+      version: 1,
+      samples: [first, second],
+      activeSampleId: first.id,
+      stainCountOverride: 0,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    const report = generateAllReports(state, false);
+
+    expect(report.startsWith('1- Nondiagnostik Sitoloji.')).toBe(true);
+    expect(report).toContain('\n\n2- Non-diagnostik sitoloji, Bethesda 1.');
+    expect(report).not.toContain('Lenf nodu');
+    expect(report).not.toContain('Tiroid; İnce iğne aspirasyon biyopsisi');
+    expect(report).not.toContain('Örnek NO');
+  });
+
   it('tek raporda boya başlığını ve sayısını doğru üretir', () => {
     const report = generateSampleReport(sample('lap', OTHER_NDS));
     expect(report).toContain('\n\n\n\nEK BOYALAR\n');
     expect(report).toContain('3 adet histokimyasal boya');
+  });
+
+  it('ek boya sayısı sıfır olduğunda boya bölümünü hiç oluşturmaz', () => {
+    const report = generateSampleReport(sample('lap', OTHER_NDS), 1, 0);
+    expect(report).not.toContain('EK BOYALAR');
+    expect(report).not.toContain('histokimyasal boya');
   });
 });
 
