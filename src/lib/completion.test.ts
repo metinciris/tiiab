@@ -6,6 +6,7 @@ import { getMissingSections, isSampleComplete, requiredMicroscopySections } from
 describe('rapor tamamlanma kontrolü', () => {
   it('mikroskopi tamam olsa bile tanı yoksa tik göstermez', () => {
     const sample = createSample(1, 'tiiab');
+    sample.diagnosisNote = 'Serbest tanı notu';
     sample.sectionNotes = Object.fromEntries(
       requiredMicroscopySections(sample).map((section) => [section.id, 'Değerlendirildi.']),
     );
