@@ -2,6 +2,7 @@ import { DenseSection } from './DenseSection';
 import { EditorNotes } from './EditorNotes';
 import { OptionalMicroscopySection } from './OptionalMicroscopySection';
 import type { ReportTemplate, Sample } from '../types';
+import '../disclosures.css';
 
 type Props = {
   sample: Sample;
