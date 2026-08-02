@@ -129,7 +129,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [state, activeSample]);
+  }, [state, activeSample, uiPreferences.showSpecimenInReport]);
 
   function notify(text: string) {
     setToast({ id: Date.now(), text });
@@ -210,7 +210,7 @@ export default function App() {
   }
 
   async function copyAll() {
-    await copyText(generateAllReports(state));
+    await copyText(generateAllReports(state, uiPreferences.showSpecimenInReport));
     notify('Tüm rapor kopyalandı');
   }
 
@@ -267,20 +267,32 @@ export default function App() {
                 setUiPreferences((current) => ({ ...current, stainOpen }));
               }}
             >
-              <summary>Ek boya <b>{stainCount}</b></summary>
-              <label>
-                Manuel
-                <input
-                  type="number"
-                  min="0"
-                  value={state.stainCountOverride ?? ''}
-                  placeholder="Oto"
-                  onChange={(event) => setState((current) => ({
+              <summary>Ayar</summary>
+              <div className="settings-disclosure__body">
+                <label>
+                  Ek boya
+                  <input
+                    type="number"
+                    min="0"
+                    value={state.stainCountOverride ?? ''}
+                    placeholder={`${automaticStainCount(state.samples.length)}`}
+                    onChange={(event) => setState((current) => ({
+                      ...current,
+                      stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)),
+                    }))}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="settings-toggle"
+                  onClick={() => setUiPreferences((current) => ({
                     ...current,
-                    stainCountOverride: event.target.value === '' ? null : Math.max(0, Number(event.target.value)),
+                    showSpecimenInReport: !current.showSpecimenInReport,
                   }))}
-                />
-              </label>
+                >
+                  Alındığı yer {uiPreferences.showSpecimenInReport ? 'kapat' : 'göster'}
+                </button>
+              </div>
             </details>
             <button type="button" className="delete-button" onClick={() => deleteSample(activeSample.id)}>Sil</button>
           </div>
@@ -336,10 +348,12 @@ export default function App() {
                 tabIndex={0}
                 onClick={() => setState((current) => ({ ...current, activeSampleId: sample.id }))}
               >
-                <pre>{generateSampleReportBody(sample, state.samples.length)}</pre>
+                <pre>{generateSampleReportBody(sample, state.samples.length, uiPreferences.showSpecimenInReport)}</pre>
               </div>
             ))}
-            <div className="preview-stains"><pre>{`EK BOYALAR\n${stainText}`}</pre></div>
+            {stainCount > 0 && (
+              <div className="preview-stains"><pre>{`EK BOYALAR\n${stainText}`}</pre></div>
+            )}
           </div>
           <div className="copy-stack">
             <button className="primary" type="button" onClick={() => void copyAll()} title="Kısayol: Ctrl+Shift+C">Tümünü kopyala</button>
