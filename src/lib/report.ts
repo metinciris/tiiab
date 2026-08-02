@@ -69,10 +69,12 @@ function isCustomLocation(sample: Sample, location: string): boolean {
   return Boolean(location) && !standardLocations.includes(location);
 }
 
-function specimenLine(sample: Sample, location: string, sampleCount: number): string {
+function specimenLine(sample: Sample, location: string, sampleCount: number, showSpecimen: boolean): string {
   const template = getTemplate(sample.mode);
   const isMultiple = sampleCount > 1;
   const prefix = isMultiple ? `${sample.number}- ` : '';
+
+  if (!showSpecimen) return prefix;
 
   if (!isCustomLocation(sample, location)) {
     const sampleNumber = isMultiple ? `(Örnek NO:${sample.number}) ` : '';
@@ -90,7 +92,7 @@ function specimenLine(sample: Sample, location: string, sampleCount: number): st
   return `${prefix}${locationField} Sıvı bazlı sitoloji ve ince iğne aspirasyon biyopsisi, yayma`;
 }
 
-export function generateSampleReportBody(sample: Sample, sampleCount = 1): string {
+export function generateSampleReportBody(sample: Sample, sampleCount = 1, showSpecimen = true): string {
   const template = getTemplate(sample.mode);
   const diagnosisSection = template.sections.find((section) => section.exclusive);
   const microscopySections = template.sections.filter((section) => !section.exclusive);
@@ -105,8 +107,11 @@ export function generateSampleReportBody(sample: Sample, sampleCount = 1): strin
     .join(' ');
 
   const location = sample.location.trim() || template.defaultLocation;
-  const firstLine = specimenLine(sample, location, sampleCount);
-  const lines: string[] = [diagnosisText ? `${firstLine}: ${diagnosisText}` : firstLine];
+  const firstLine = specimenLine(sample, location, sampleCount, showSpecimen);
+  const diagnosisLine = diagnosisText
+    ? (showSpecimen && firstLine ? `${firstLine}: ${diagnosisText}` : `${firstLine}${diagnosisText}`)
+    : firstLine;
+  const lines: string[] = diagnosisLine ? [diagnosisLine] : [];
 
   const microscopyLines = microscopySections.flatMap((section) => {
     const values = section.options
@@ -139,23 +144,31 @@ export function automaticStainCount(sampleCount: number): number {
 
 export function generateStainText(sampleCount: number, override: number | null): string {
   const count = override ?? automaticStainCount(sampleCount);
+  if (count <= 0) return '';
   return `Ayırıcı tanı amacıyla ${count} adet histokimyasal boya: Papanicolaou, Giemsa, ayrıca Hematoksilen Eozin çalışılmıştır. Örnekler, direkt yayma ve SurePath sıvı bazlı yöntemle değerlendirilmiştir.`;
 }
 
 function appendStains(reportBody: string, sampleCount: number, override: number | null): string {
-  return `${reportBody}\n\n\n\nEK BOYALAR\n${generateStainText(sampleCount, override)}`;
+  const stainText = generateStainText(sampleCount, override);
+  if (!stainText) return reportBody;
+  return `${reportBody}\n\n\n\nEK BOYALAR\n${stainText}`;
 }
 
-export function generateSampleReport(sample: Sample, sampleCount = 1, override: number | null = null): string {
-  return appendStains(generateSampleReportBody(sample, sampleCount), sampleCount, override);
+export function generateSampleReport(
+  sample: Sample,
+  sampleCount = 1,
+  override: number | null = null,
+  showSpecimen = true,
+): string {
+  return appendStains(generateSampleReportBody(sample, sampleCount, showSpecimen), sampleCount, override);
 }
 
-export function generateAllReports(state: AppState): string {
+export function generateAllReports(state: AppState, showSpecimen = true): string {
   const reports = state.samples
     .filter(sampleHasContent)
-    .map((sample) => generateSampleReportBody(sample, state.samples.length));
+    .map((sample) => generateSampleReportBody(sample, state.samples.length, showSpecimen));
   const reportBody = reports.length
     ? reports.join('\n\n')
-    : generateSampleReportBody(state.samples[0], state.samples.length);
+    : generateSampleReportBody(state.samples[0], state.samples.length, showSpecimen);
   return appendStains(reportBody, state.samples.length, state.stainCountOverride);
 }
