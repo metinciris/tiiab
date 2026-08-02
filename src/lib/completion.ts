@@ -6,10 +6,10 @@ function sectionHasContent(sample: Sample, section: ReportSection): boolean {
     || Boolean(sample.sectionNotes?.[section.id]?.trim());
 }
 
-function diagnosisHasContent(sample: Sample): boolean {
+function diagnosisHasSelection(sample: Sample): boolean {
   const diagnosis = getTemplate(sample.mode).sections.find((section) => section.exclusive);
   if (!diagnosis) return false;
-  return sectionHasContent(sample, diagnosis) || Boolean(sample.diagnosisNote.trim());
+  return diagnosis.options.some((option) => sample.selections[option.id] !== undefined);
 }
 
 export function requiredMicroscopySections(sample: Sample): ReportSection[] {
@@ -25,12 +25,12 @@ export function getMissingSections(sample: Sample): string[] {
     .filter((section) => !sectionHasContent(sample, section))
     .map((section) => section.title);
 
-  return diagnosisHasContent(sample) ? missing : ['Tanı', ...missing];
+  return diagnosisHasSelection(sample) ? missing : ['Tanı', ...missing];
 }
 
 export function isSampleComplete(sample: Sample): boolean {
   const microscopySections = requiredMicroscopySections(sample);
-  return diagnosisHasContent(sample)
+  return diagnosisHasSelection(sample)
     && microscopySections.length > 0
     && microscopySections.every((section) => sectionHasContent(sample, section));
 }
