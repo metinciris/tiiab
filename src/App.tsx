@@ -60,7 +60,7 @@ const TIIAB_NDS: SelectionState = {
 const OTHER_NDS: SelectionState = {
   'LAP-2-E2': 0,
   'LAP-3-E3': 0,
-  'LAP-3-M3': 1,
+  'LAP-3-M3': 0,
   'LAP-4-E4': 0,
   'LAP-5-E5': 0,
   'LAP-6-E6': 0,
