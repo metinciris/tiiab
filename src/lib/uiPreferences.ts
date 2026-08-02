@@ -1,6 +1,7 @@
 export type UiPreferences = {
   stainOpen: boolean;
   specimenOpen: boolean;
+  showSpecimenInReport: boolean;
 };
 
 const STORAGE_KEY = 'tiiab-ui-preferences-v1';
@@ -8,6 +9,7 @@ const STORAGE_KEY = 'tiiab-ui-preferences-v1';
 const DEFAULT_PREFERENCES: UiPreferences = {
   stainOpen: false,
   specimenOpen: true,
+  showSpecimenInReport: true,
 };
 
 export function loadUiPreferences(): UiPreferences {
@@ -18,6 +20,9 @@ export function loadUiPreferences(): UiPreferences {
     return {
       stainOpen: typeof parsed.stainOpen === 'boolean' ? parsed.stainOpen : DEFAULT_PREFERENCES.stainOpen,
       specimenOpen: typeof parsed.specimenOpen === 'boolean' ? parsed.specimenOpen : DEFAULT_PREFERENCES.specimenOpen,
+      showSpecimenInReport: typeof parsed.showSpecimenInReport === 'boolean'
+        ? parsed.showSpecimenInReport
+        : DEFAULT_PREFERENCES.showSpecimenInReport,
     };
   } catch {
     return DEFAULT_PREFERENCES;
