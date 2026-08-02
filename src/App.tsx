@@ -262,7 +262,10 @@ export default function App() {
             <details
               className="stain-disclosure"
               open={uiPreferences.stainOpen}
-              onToggle={(event) => setUiPreferences((current) => ({ ...current, stainOpen: event.currentTarget.open }))}
+              onToggle={(event) => {
+                const stainOpen = event.currentTarget.open;
+                setUiPreferences((current) => ({ ...current, stainOpen }));
+              }}
             >
               <summary>Ek boya <b>{stainCount}</b></summary>
               <label>
